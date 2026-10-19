@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPL Auction Arena</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">🏏 <span>Auction Arena</span></div>
+  <div class="top-right">
+    <div id="roomBadge" class="mode-badge hidden"></div>
+    <div id="modeBadge" class="mode-badge hidden"></div>
+    <button id="voiceToggle" class="icon-btn on" title="Toggle auctioneer voice">🔊</button>
+  </div>
+</header>
+
+<div id="captionBar" class="caption hidden">🎙️ <span id="captionText"></span></div>
+
+<!-- ============ ROOMS ============ -->
+<main id="view-rooms" class="view">
+  <section class="hero">
+    <h1>IPL Auction Arena</h1>
+    <p>Create a room, share the code, and bid against your friends.</p>
+  </section>
+
+  <section class="card join-card">
+    <h2>🎪 Create a room</h2>
+    <p style="color:var(--mut);font-size:14px">Start a new room and invite friends with your room code.</p>
+    <input id="createNameInput" maxlength="30" placeholder="Your name">
+    <div id="createMsg" class="msg"></div>
+    <button id="createRoomBtn" class="btn primary big">Create Room</button>
+  </section>
+
+  <section class="card join-card">
+    <h2>🔑 Join a room</h2>
+    <p style="color:var(--mut);font-size:14px">Got a room code from a friend? Enter it below.</p>
+    <input id="joinCodeInput" maxlength="6" placeholder="Room code (e.g. XK7Q2M)" style="text-transform:uppercase">
+    <input id="joinNameInput" maxlength="30" placeholder="Your name">
+    <div id="joinRoomMsg" class="msg"></div>
+    <button id="joinRoomBtn" class="btn primary big">Join Room</button>
+  </section>
+</main>
+
+<!-- ============ LOBBY ============ -->
+<main id="view-lobby" class="view hidden">
+  <section class="hero">
+    <h1>IPL Auction Arena</h1>
+    <p>Pick your franchise. Build your squad. Outbid everyone.</p>
+  </section>
+
+  <section class="card room-card">
+    <div class="room-code-row">
+      <div>
+        <div class="room-code-label">Room code — share it with friends</div>
+        <div id="roomCodeBig" class="room-code"></div>
+      </div>
+      <button id="copyCodeBtn" class="btn small">📋 Copy</button>
+    </div>
+    <div id="roomMembers" class="room-members"></div>
+    <div style="margin-top:10px"><a href="#" id="leaveRoomLink" style="color:var(--mut);font-size:13px">← leave room</a></div>
+  </section>
+
+  <section class="card join-card">
+    <h2>1 · Join the auction</h2>
+    <input id="nameInput" maxlength="30" placeholder="Your name (bidder)">
+    <h3>Choose your team <small>— one bidder per team</small></h3>
+    <div id="teamGrid" class="team-grid"></div>
+    <div id="joinMsg" class="msg"></div>
+    <button id="joinBtn" class="btn primary big">Join Auction</button>
+    <div id="whoami" class="whoami hidden"></div>
+  </section>
+
+  <section class="card">
+    <h2>2 · Start the auction <small>(any joined bidder can start)</small></h2>
+    <div id="modeCards" class="mode-cards"></div>
+    <div id="startMsg" class="msg"></div>
+  </section>
+</main>
+
+<!-- ============ AUCTION ROOM ============ -->
+<main id="view-auction" class="view hidden">
+  <section class="arena">
+    <div class="player-stage">
+      <div class="set-tag" id="setTag"></div>
+      <div id="playerCard" class="player-card"></div>
+      <div class="bid-panel">
+        <div class="timer-wrap"><div id="timerBar" class="timer-bar"></div></div>
+        <div id="timerText" class="timer-text"></div>
+        <div id="currentBid" class="current-bid"></div>
+        <button id="bidBtn" class="btn bid big">Place Bid</button>
+        <div id="bidMsg" class="msg"></div>
+        <div id="hostControls" class="host-controls hidden">
+          <span class="host-tag">HOST</span>
+          <button id="hammerBtn" class="btn small">🔨 Hammer (Sold)</button>
+          <button id="unsoldBtn" class="btn small ghost">Mark Unsold</button>
+          <button id="nextBtn" class="btn small ghost">Next ⏭</button>
+          <button id="resetBtn" class="btn small danger">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="side">
+      <div class="card my-squad">
+        <h3 id="mySquadTitle">My Squad</h3>
+        <div id="purseBar" class="purse-bar"><div id="purseFill"></div></div>
+        <div id="purseText" class="purse-text"></div>
+        <div id="mySquadList" class="squad-list"></div>
+      </div>
+      <div class="card">
+        <h3>Teams</h3>
+        <div id="teamsStrip" class="teams-strip"></div>
+      </div>
+    </aside>
+  </section>
+
+  <section class="card lists-card">
+    <div class="tabs">
+      <button class="tab active" data-tab="upcoming">Upcoming</button>
+      <button class="tab" data-tab="sold">Sold <span id="soldCount"></span></button>
+      <button class="tab" data-tab="unsold">Unsold <span id="unsoldCount"></span></button>
+    </div>
+    <div id="tab-upcoming" class="tabpane"></div>
+    <div id="tab-sold" class="tabpane hidden"></div>
+    <div id="tab-unsold" class="tabpane hidden"></div>
+  </section>
+</main>
+
+<div id="resultOverlay" class="overlay hidden"><div id="resultCard" class="result-card"></div></div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,627 @@
+{
+  "Jos Buttler": {
+    "mat": 121,
+    "runs": 4120,
+    "wkts": 0
+  },
+  "Shreyas Iyer": {
+    "mat": 133,
+    "runs": 3731,
+    "wkts": 0
+  },
+  "Rishabh Pant": {
+    "mat": 125,
+    "runs": 3553,
+    "wkts": 0
+  },
+  "Kagiso Rabada": {
+    "mat": 84,
+    "runs": 215,
+    "wkts": 119
+  },
+  "Arshdeep Singh": {
+    "mat": 82,
+    "runs": 31,
+    "wkts": 97
+  },
+  "Mitchell Starc": {
+    "mat": 52,
+    "runs": 111,
+    "wkts": 65
+  },
+  "Yuzvendra Chahal": {
+    "mat": 174,
+    "runs": null,
+    "wkts": 221
+  },
+  "Liam Livingstone": {
+    "mat": 49,
+    "runs": 1051,
+    "wkts": 13
+  },
+  "David Miller": {
+    "mat": 141,
+    "runs": 3077,
+    "wkts": 0
+  },
+  "KL Rahul": {
+    "mat": 145,
+    "runs": 5222,
+    "wkts": 0
+  },
+  "Mohammed Shami": {
+    "mat": 119,
+    "runs": 84,
+    "wkts": 133
+  },
+  "Mohammed Siraj": {
+    "mat": 108,
+    "runs": 112,
+    "wkts": 109
+  },
+  "Faf du Plessis": {
+    "mat": 154,
+    "runs": 4773,
+    "wkts": 0
+  },
+  "Steve Smith": {
+    "mat": 103,
+    "runs": 2485,
+    "wkts": 0
+  },
+  "Jonny Bairstow": {
+    "mat": 50,
+    "runs": 1589,
+    "wkts": 0
+  },
+  "Travis Head": {
+    "mat": 38,
+    "runs": 1146,
+    "wkts": 2
+  },
+  "Harry Brook": {
+    "mat": 11,
+    "runs": 190,
+    "wkts": 0
+  },
+  "Kane Williamson": {
+    "mat": 79,
+    "runs": 2128,
+    "wkts": 0
+  },
+  "Joe Root": {
+    "mat": 3,
+    "runs": 10,
+    "wkts": 0
+  },
+  "David Warner": {
+    "mat": 184,
+    "runs": 6565,
+    "wkts": 0
+  },
+  "Aiden Markram": {
+    "mat": 57,
+    "runs": 1440,
+    "wkts": 6
+  },
+  "Rachin Ravindra": {
+    "mat": 18,
+    "runs": 413,
+    "wkts": 0
+  },
+  "Devon Conway": {
+    "mat": 29,
+    "runs": 1080,
+    "wkts": 0
+  },
+  "Daryl Mitchell": {
+    "mat": 15,
+    "runs": 351,
+    "wkts": 1
+  },
+  "Shai Hope": {
+    "mat": 9,
+    "runs": 183,
+    "wkts": 0
+  },
+  "Rovman Powell": {
+    "mat": 29,
+    "runs": 365,
+    "wkts": 1
+  },
+  "Shimron Hetmyer": {
+    "mat": 86,
+    "runs": 1482,
+    "wkts": 0
+  },
+  "Rilee Rossouw": {
+    "mat": 22,
+    "runs": 473,
+    "wkts": 0
+  },
+  "Ajinkya Rahane": {
+    "mat": 198,
+    "runs": 5032,
+    "wkts": 1
+  },
+  "Sherfane Rutherford": {
+    "mat": 23,
+    "runs": 397,
+    "wkts": 1
+  },
+  "Rahul Tripathi": {
+    "mat": 100,
+    "runs": 2291,
+    "wkts": 0
+  },
+  "Mayank Agarwal": {
+    "mat": 131,
+    "runs": 2756,
+    "wkts": 0
+  },
+  "Prithvi Shaw": {
+    "mat": 79,
+    "runs": 1892,
+    "wkts": 0
+  },
+  "Manish Pandey": {
+    "mat": 174,
+    "runs": 3942,
+    "wkts": 0
+  },
+  "Sarfaraz Khan": {
+    "mat": 50,
+    "runs": 585,
+    "wkts": 0
+  },
+  "Karun Nair": {
+    "mat": 84,
+    "runs": 1694,
+    "wkts": 0
+  },
+  "Ben Stokes": {
+    "mat": 45,
+    "runs": 935,
+    "wkts": 28
+  },
+  "Sam Curran": {
+    "mat": 64,
+    "runs": 997,
+    "wkts": 59
+  },
+  "Marcus Stoinis": {
+    "mat": 109,
+    "runs": 2026,
+    "wkts": 44
+  },
+  "Mitchell Marsh": {
+    "mat": 55,
+    "runs": 1292,
+    "wkts": 37
+  },
+  "Glenn Maxwell": {
+    "mat": 141,
+    "runs": 2819,
+    "wkts": 41
+  },
+  "Krunal Pandya": {
+    "mat": 142,
+    "runs": 1756,
+    "wkts": 93
+  },
+  "Washington Sundar": {
+    "mat": 66,
+    "runs": 511,
+    "wkts": 39
+  },
+  "Venkatesh Iyer": {
+    "mat": 62,
+    "runs": 1468,
+    "wkts": 3
+  },
+  "Marco Jansen": {
+    "mat": 35,
+    "runs": 141,
+    "wkts": 36
+  },
+  "Jason Holder": {
+    "mat": 46,
+    "runs": 259,
+    "wkts": 53
+  },
+  "Glenn Phillips": {
+    "mat": 8,
+    "runs": 65,
+    "wkts": 2
+  },
+  "Sikandar Raza": {
+    "mat": 9,
+    "runs": 182,
+    "wkts": 3
+  },
+  "Michael Bracewell": {
+    "mat": 5,
+    "runs": 58,
+    "wkts": 6
+  },
+  "Azmatullah Omarzai": {
+    "mat": 16,
+    "runs": 99,
+    "wkts": 12
+  },
+  "Nitish Kumar Reddy": {
+    "mat": 28,
+    "runs": 485,
+    "wkts": 5
+  },
+  "Shahbaz Ahmed": {
+    "mat": 58,
+    "runs": 545,
+    "wkts": 22
+  },
+  "Romario Shepherd": {
+    "mat": 18,
+    "runs": 185,
+    "wkts": 10
+  },
+  "Deepak Hooda": {
+    "mat": 125,
+    "runs": 1496,
+    "wkts": 10
+  },
+  "Vijay Shankar": {
+    "mat": 78,
+    "runs": 1233,
+    "wkts": 9
+  },
+  "Ishan Kishan": {
+    "mat": 119,
+    "runs": 2998,
+    "wkts": 0
+  },
+  "Quinton de Kock": {
+    "mat": 115,
+    "runs": 3309,
+    "wkts": 0
+  },
+  "Phil Salt": {
+    "mat": 34,
+    "runs": 1056,
+    "wkts": 0
+  },
+  "Josh Inglis": {
+    "mat": 11,
+    "runs": 278,
+    "wkts": 0
+  },
+  "Rahmanullah Gurbaz": {
+    "mat": 19,
+    "runs": 363,
+    "wkts": 0
+  },
+  "Jitesh Sharma": {
+    "mat": 55,
+    "runs": 991,
+    "wkts": 0
+  },
+  "Dhruv Jurel": {
+    "mat": 42,
+    "runs": 680,
+    "wkts": 0
+  },
+  "Tom Banton": {
+    "mat": 2,
+    "runs": 18,
+    "wkts": 0
+  },
+  "Jamie Smith": {
+    "mat": 0,
+    "runs": 0,
+    "wkts": 0
+  },
+  "Kusal Mendis": {
+    "mat": 1,
+    "runs": 20,
+    "wkts": 0
+  },
+  "Litton Das": {
+    "mat": 1,
+    "runs": 4,
+    "wkts": 0
+  },
+  "Jofra Archer": {
+    "mat": 52,
+    "runs": 262,
+    "wkts": 59
+  },
+  "Bhuvneshwar Kumar": {
+    "mat": 190,
+    "runs": 320,
+    "wkts": 198
+  },
+  "Trent Boult": {
+    "mat": 120,
+    "runs": 85,
+    "wkts": 143
+  },
+  "Josh Hazlewood": {
+    "mat": 39,
+    "runs": 19,
+    "wkts": 57
+  },
+  "Mark Wood": {
+    "mat": 5,
+    "runs": 12,
+    "wkts": 11
+  },
+  "Deepak Chahar": {
+    "mat": 95,
+    "runs": 117,
+    "wkts": 88
+  },
+  "T Natarajan": {
+    "mat": 63,
+    "runs": 3,
+    "wkts": 67
+  },
+  "Harshal Patel": {
+    "mat": 119,
+    "runs": 270,
+    "wkts": 151
+  },
+  "Shardul Thakur": {
+    "mat": 105,
+    "runs": 325,
+    "wkts": 107
+  },
+  "Avesh Khan": {
+    "mat": 76,
+    "runs": 62,
+    "wkts": 87
+  },
+  "Prasidh Krishna": {
+    "mat": 66,
+    "runs": 9,
+    "wkts": 74
+  },
+  "Khaleel Ahmed": {
+    "mat": 71,
+    "runs": 2,
+    "wkts": 89
+  },
+  "Mukesh Kumar": {
+    "mat": 32,
+    "runs": 10,
+    "wkts": 36
+  },
+  "Umesh Yadav": {
+    "mat": 148,
+    "runs": 208,
+    "wkts": 144
+  },
+  "Lockie Ferguson": {
+    "mat": 49,
+    "runs": 72,
+    "wkts": 51
+  },
+  "Gus Atkinson": {
+    "mat": 0,
+    "runs": 0,
+    "wkts": 0
+  },
+  "Alzarri Joseph": {
+    "mat": 22,
+    "runs": 27,
+    "wkts": 21
+  },
+  "Akash Deep": {
+    "mat": 14,
+    "runs": 25,
+    "wkts": 10
+  },
+  "Yash Dayal": {
+    "mat": 43,
+    "runs": 4,
+    "wkts": 41
+  },
+  "Mohit Sharma": {
+    "mat": 120,
+    "runs": 125,
+    "wkts": 134
+  },
+  "Naveen-ul-Haq": {
+    "mat": 18,
+    "runs": 18,
+    "wkts": 25
+  },
+  "Fazalhaq Farooqi": {
+    "mat": 12,
+    "runs": 5,
+    "wkts": 6
+  },
+  "Spencer Johnson": {
+    "mat": 9,
+    "runs": 8,
+    "wkts": 5
+  },
+  "Nathan Ellis": {
+    "mat": 17,
+    "runs": 19,
+    "wkts": 19
+  },
+  "Adam Zampa": {
+    "mat": 22,
+    "runs": 15,
+    "wkts": 31
+  },
+  "Adil Rashid": {
+    "mat": 3,
+    "runs": 22,
+    "wkts": 2
+  },
+  "Wanindu Hasaranga": {
+    "mat": 37,
+    "runs": 81,
+    "wkts": 46
+  },
+  "Noor Ahmad": {
+    "mat": 37,
+    "runs": 20,
+    "wkts": 48
+  },
+  "Maheesh Theekshana": {
+    "mat": 38,
+    "runs": 17,
+    "wkts": 36
+  },
+  "Mujeeb Ur Rahman": {
+    "mat": 20,
+    "runs": 12,
+    "wkts": 20
+  },
+  "Tabraiz Shamsi": {
+    "mat": 5,
+    "runs": 2,
+    "wkts": 3
+  },
+  "Keshav Maharaj": {
+    "mat": 2,
+    "runs": 1,
+    "wkts": 2
+  },
+  "Rahul Chahar": {
+    "mat": 79,
+    "runs": 129,
+    "wkts": 75
+  },
+  "Karn Sharma": {
+    "mat": 90,
+    "runs": 352,
+    "wkts": 83
+  },
+  "Mayank Markande": {
+    "mat": 37,
+    "runs": 48,
+    "wkts": 37
+  },
+  "Angkrish Raghuvanshi": {
+    "mat": 22,
+    "runs": 463,
+    "wkts": 0
+  },
+  "Sameer Rizvi": {
+    "mat": 13,
+    "runs": 172,
+    "wkts": 0
+  },
+  "Nehal Wadhera": {
+    "mat": 36,
+    "runs": 719,
+    "wkts": 0
+  },
+  "Ayush Badoni": {
+    "mat": 56,
+    "runs": 963,
+    "wkts": 4
+  },
+  "Shahrukh Khan": {
+    "mat": 55,
+    "runs": 732,
+    "wkts": 1
+  },
+  "Bevon Jacobs": {
+    "mat": 0,
+    "runs": 0,
+    "wkts": 0
+  },
+  "Ashutosh Sharma": {
+    "mat": 24,
+    "runs": 393,
+    "wkts": 0
+  },
+  "Naman Dhir": {
+    "mat": 23,
+    "runs": 392,
+    "wkts": 0
+  },
+  "Vipraj Nigam": {
+    "mat": 14,
+    "runs": 142,
+    "wkts": 11
+  },
+  "Abdul Samad": {
+    "mat": 63,
+    "runs": 741,
+    "wkts": 2
+  },
+  "Ramandeep Singh": {
+    "mat": 31,
+    "runs": 217,
+    "wkts": 6
+  },
+  "Musheer Khan": {
+    "mat": 1,
+    "runs": 0,
+    "wkts": 1
+  },
+  "Suryansh Shedge": {
+    "mat": 5,
+    "runs": 7,
+    "wkts": 0
+  },
+  "Robin Minz": {
+    "mat": 2,
+    "runs": 6,
+    "wkts": 0
+  },
+  "Kumar Kushagra": {
+    "mat": 4,
+    "runs": 3,
+    "wkts": 0
+  },
+  "Anshul Kamboj": {
+    "mat": 11,
+    "runs": 16,
+    "wkts": 10
+  },
+  "Prince Yadav": {
+    "mat": 6,
+    "runs": 5,
+    "wkts": 3
+  },
+  "Vaibhav Arora": {
+    "mat": 32,
+    "runs": 9,
+    "wkts": 36
+  },
+  "Yash Thakur": {
+    "mat": 21,
+    "runs": 0,
+    "wkts": 25
+  },
+  "Simarjeet Singh": {
+    "mat": 14,
+    "runs": 10,
+    "wkts": 11
+  },
+  "Kwena Maphaka": {
+    "mat": 4,
+    "runs": 8,
+    "wkts": 2
+  },
+  "Suyash Sharma": {
+    "mat": 27,
+    "runs": 0,
+    "wkts": 18
+  },
+  "Zeeshan Ansari": {
+    "mat": 10,
+    "runs": 0,
+    "wkts": 6
+  },
+  "Allah Ghazanfar": {
+    "mat": 0,
+    "runs": 0,
+    "wkts": 0
+  }
+}

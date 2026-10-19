@@ -1,0 +1,170 @@
+:root{
+  --bg:#0b0e1a; --bg2:#12172b; --card:#161c33; --line:#263056;
+  --gold:#f5c518; --gold2:#ffe08a; --txt:#eef1ff; --mut:#9aa3c7;
+  --green:#2ecc71; --red:#ff5a5a; --blue:#4d7cff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:radial-gradient(1200px 600px at 50% -10%,#1b2450 0%,var(--bg) 55%) fixed,var(--bg);
+  color:var(--txt);font-family:"Segoe UI",system-ui,-apple-system,sans-serif;min-height:100vh}
+.hidden{display:none!important}
+.view{max-width:1200px;margin:0 auto;padding:18px 14px 60px}
+
+/* topbar */
+.topbar{display:flex;justify-content:space-between;align-items:center;
+  padding:12px 18px;background:rgba(10,13,28,.85);border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:50;backdrop-filter:blur(6px)}
+.brand{font-weight:800;font-size:20px;letter-spacing:.5px}
+.brand span{background:linear-gradient(90deg,var(--gold),var(--gold2));-webkit-background-clip:text;
+  background-clip:text;color:transparent}
+.top-right{display:flex;gap:10px;align-items:center}
+.mode-badge{background:var(--gold);color:#111;font-weight:700;font-size:13px;
+  padding:6px 14px;border-radius:20px}
+.icon-btn{background:var(--card);border:1px solid var(--line);color:var(--txt);
+  font-size:18px;border-radius:10px;padding:6px 10px;cursor:pointer}
+.icon-btn.on{border-color:var(--gold)}
+
+.caption{background:#10142a;border-bottom:1px solid var(--line);padding:8px 18px;
+  font-size:14px;color:var(--gold2);position:sticky;top:57px;z-index:40}
+
+/* hero + cards */
+.hero{text-align:center;padding:34px 10px 10px}
+.hero h1{font-size:44px;background:linear-gradient(90deg,#fff,var(--gold2));-webkit-background-clip:text;
+  background-clip:text;color:transparent;margin-bottom:8px}
+.hero p{color:var(--mut);font-size:17px}
+.card{background:linear-gradient(180deg,var(--card),#11162b);border:1px solid var(--line);
+  border-radius:16px;padding:20px;margin:18px 0;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+.card h2{margin-bottom:12px;font-size:20px}
+.card h2 small,.card h3 small{color:var(--mut);font-weight:400;font-size:13px}
+.card h3{margin-bottom:10px}
+input#nameInput{width:100%;max-width:340px;padding:12px 14px;border-radius:10px;
+  border:1px solid var(--line);background:#0d1226;color:var(--txt);font-size:16px;margin-bottom:14px}
+
+.btn{background:var(--blue);border:none;color:#fff;font-weight:700;border-radius:12px;
+  padding:12px 22px;font-size:15px;cursor:pointer;transition:.15s}
+.btn:hover{filter:brightness(1.12)} .btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.btn.primary{background:linear-gradient(90deg,#b8860b,var(--gold));color:#111}
+.btn.big{font-size:17px;padding:14px 30px}
+.btn.small{font-size:13px;padding:8px 14px;border-radius:9px}
+.btn.ghost{background:#232b4d}.btn.danger{background:#5a1f28;color:#ffb3b3}
+.btn.bid{background:linear-gradient(90deg,#1e9e52,#2ecc71);font-size:19px;width:100%;
+  padding:16px;box-shadow:0 0 24px rgba(46,204,113,.35)}
+.msg{min-height:20px;font-size:14px;color:var(--red);margin:8px 0}
+.whoami{margin-top:10px;font-size:15px}
+
+/* team grid */
+.team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:10px 0 16px}
+.team-pick{border:2px solid var(--line);border-radius:12px;padding:12px;cursor:pointer;
+  background:#0e1330;text-align:center;transition:.15s}
+.team-pick:hover{transform:translateY(-2px);border-color:var(--gold)}
+.team-pick.selected{border-color:var(--gold);box-shadow:0 0 14px rgba(245,197,24,.35)}
+.team-pick.taken{opacity:.4;cursor:not-allowed}
+.team-dot{width:34px;height:34px;border-radius:50%;margin:0 auto 8px;display:flex;
+  align-items:center;justify-content:center;font-weight:800;font-size:13px}
+.team-pick .tname{font-weight:700;font-size:14px}
+.team-pick .tby{font-size:12px;color:var(--mut);margin-top:4px}
+
+/* mode cards */
+.mode-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.mode-card{border:1px solid var(--line);border-radius:14px;padding:16px;background:#0e1330}
+.mode-card h3{color:var(--gold2)}
+.mode-card p{color:var(--mut);font-size:13.5px;margin:8px 0 14px;line-height:1.5}
+.mode-card .purse{font-size:22px;font-weight:800;color:var(--txt)}
+
+/* arena */
+.arena{display:grid;grid-template-columns:1fr 330px;gap:16px;margin-top:14px}
+@media(max-width:900px){.arena{grid-template-columns:1fr}}
+.player-stage{background:linear-gradient(180deg,#1a2140,#0d1128);border:1px solid var(--line);
+  border-radius:18px;padding:22px;position:relative;overflow:hidden}
+.set-tag{display:inline-block;background:#2a335f;color:var(--gold2);font-size:12px;
+  font-weight:700;padding:5px 12px;border-radius:20px;margin-bottom:12px;letter-spacing:1px;
+  text-transform:uppercase}
+.player-card{display:flex;gap:18px;align-items:center;margin-bottom:18px}
+.p-avatar{width:110px;height:110px;border-radius:16px;flex-shrink:0;display:flex;
+  align-items:center;justify-content:center;font-size:38px;font-weight:800;color:#fff;
+  background:linear-gradient(135deg,#3b4a8f,#141a38);border:2px solid var(--line);overflow:hidden}
+.p-avatar img{width:100%;height:100%;object-fit:cover}
+.p-info h2{font-size:28px;margin-bottom:4px}
+.p-meta{color:var(--mut);font-size:14px;margin:3px 0}
+.p-base{margin-top:8px;display:inline-block;background:#0d1226;border:1px dashed var(--gold);
+  color:var(--gold2);padding:6px 14px;border-radius:10px;font-weight:700}
+.bid-panel{margin-top:6px}
+.timer-wrap{height:8px;background:#0a0d20;border-radius:6px;overflow:hidden;margin-bottom:6px}
+.timer-bar{height:100%;width:100%;background:linear-gradient(90deg,var(--gold),#ff7a45);
+  transition:width .4s linear}
+.timer-text{text-align:right;font-size:13px;color:var(--mut);margin-bottom:10px}
+.current-bid{text-align:center;margin:10px 0 14px}
+.cb-label{font-size:13px;color:var(--mut);letter-spacing:2px;text-transform:uppercase}
+.cb-amount{font-size:46px;font-weight:800;color:var(--gold);margin:4px 0}
+.cb-team{display:inline-block;font-weight:700;padding:5px 16px;border-radius:20px;font-size:14px}
+.host-controls{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.host-tag{background:var(--red);color:#fff;font-size:11px;font-weight:800;padding:4px 10px;border-radius:8px}
+
+.side .card{margin-top:0}
+.purse-bar{height:10px;background:#0a0d20;border-radius:6px;overflow:hidden;margin:8px 0}
+#purseFill{height:100%;background:linear-gradient(90deg,var(--green),var(--gold));width:100%}
+.purse-text{font-size:13px;color:var(--mut);margin-bottom:10px}
+.squad-list{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow:auto}
+.sq-row{display:flex;justify-content:space-between;align-items:center;background:#0d1226;
+  border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px}
+.sq-row .pr{color:var(--gold2);font-weight:700}
+.teams-strip{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tm{background:#0d1226;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12.5px}
+.tm .hd{display:flex;align-items:center;gap:7px;font-weight:700;margin-bottom:5px}
+.tm .dot{width:14px;height:14px;border-radius:50%;flex-shrink:0}
+.tm .st{color:var(--mut)} .tm .st b{color:var(--txt)}
+.tm.me{border-color:var(--gold)}
+
+/* tabs */
+.tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.tab{background:#0d1226;border:1px solid var(--line);color:var(--mut);padding:10px 22px;
+  border-radius:12px;font-size:15px;font-weight:700;cursor:pointer}
+.tab.active{background:var(--gold);color:#111;border-color:var(--gold)}
+.tab span{opacity:.75;font-size:13px}
+.set-head{margin:16px 0 8px;color:var(--gold2);font-weight:800;font-size:14px;
+  letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--line);padding-bottom:6px}
+.plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.prow{display:flex;gap:10px;align-items:center;background:#0d1226;border:1px solid var(--line);
+  border-radius:10px;padding:8px 10px;font-size:13.5px}
+.prow.live{border-color:var(--gold);box-shadow:0 0 12px rgba(245,197,24,.3)}
+.prow.done{opacity:.55}
+.mini-av{width:38px;height:38px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;
+  justify-content:center;font-weight:800;font-size:14px;color:#fff;
+  background:linear-gradient(135deg,#3b4a8f,#141a38);overflow:hidden}
+.mini-av img{width:100%;height:100%;object-fit:cover}
+.prow .nm{font-weight:700}
+.prow .rl{color:var(--mut);font-size:12px}
+.prow .bs{margin-left:auto;color:var(--gold2);font-weight:700;white-space:nowrap}
+.sold-tag{margin-left:auto;font-size:11px;font-weight:800;padding:3px 9px;border-radius:12px;white-space:nowrap}
+
+/* overlay */
+.overlay{position:fixed;inset:0;background:rgba(5,7,18,.82);display:flex;align-items:center;
+  justify-content:center;z-index:100;backdrop-filter:blur(4px)}
+.result-card{background:linear-gradient(180deg,#1c2347,#0d1128);border:2px solid var(--gold);
+  border-radius:22px;padding:44px 56px;text-align:center;max-width:520px;
+  box-shadow:0 0 60px rgba(245,197,24,.35);animation:pop .35s ease}
+@keyframes pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.result-card h1{font-size:34px;margin:10px 0}
+.result-card .rteam{font-size:20px;font-weight:800;margin:8px 0}
+.result-card .rprice{font-size:40px;color:var(--gold);font-weight:800;margin:10px 0}
+.result-card p{color:var(--mut)}
+.confetti{font-size:52px}
+
+/* rooms */
+.room-card{border-color:var(--gold)}
+.room-code-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.room-code-label{color:var(--mut);font-size:13px;margin-bottom:4px}
+.room-code{font-size:34px;font-weight:800;letter-spacing:8px;color:var(--gold);
+  font-family:ui-monospace,monospace}
+.room-members{margin-top:6px}
+.member-chip{display:inline-block;border:1px solid var(--line);border-radius:16px;
+  padding:4px 12px;margin:4px 6px 0 0;font-size:13px;background:#0d1226}
+.join-card input{display:block}
+.join-card input{width:100%;max-width:340px;padding:12px 14px;border-radius:10px;
+  border:1px solid var(--line);background:#0d1226;color:var(--txt);font-size:16px;margin-bottom:14px}
+
+/* career stats on player cards */
+.p-stats{margin-top:8px;font-size:14px;color:var(--gold2);background:rgba(245,197,24,.08);
+  border:1px solid rgba(245,197,24,.25);border-radius:10px;padding:7px 12px;display:inline-block}
+.p-stats .st-num{font-weight:800;color:#fff}
+.stats-compact{font-size:11px;color:var(--gold2);margin-top:2px}
+.stats-compact .st-num{font-weight:700;color:#fff}
