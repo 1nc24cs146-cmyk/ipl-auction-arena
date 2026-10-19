@@ -489,8 +489,8 @@ $("voiceToggle").onclick = () => {
   $("voiceToggle").classList.toggle("on", voiceOn);
   if (!voiceOn && "speechSynthesis" in window) speechSynthesis.cancel();
 };
-document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
-  document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+document.querySelectorAll(".lists-card .tab").forEach(t => t.onclick = () => {
+  document.querySelectorAll(".lists-card .tab").forEach(x => x.classList.remove("active"));
   t.classList.add("active"); activeTab = t.dataset.tab;
   ["upcoming", "sold", "unsold"].forEach(k => $("tab-" + k).classList.toggle("hidden", k !== activeTab));
 });
