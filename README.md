@@ -32,7 +32,7 @@ gunicorn). Easiest free route — **Render**:
    Blueprint.)
 3. Settings: **Runtime** Python, **Build command**
    `pip install -r requirements.txt`, **Start command**
-   `gunicorn app:app --workers 1 --threads 8 --timeout 120`.
+   `gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 120`.
 4. Deploy — you'll get a public URL like
    `https://ipl-auction-arena.onrender.com`. Share it with friends.
 
