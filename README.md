@@ -53,7 +53,8 @@ Railway and Fly.io work too — same build/start commands.
 
 ## How it plays
 
-1. **Create a room** (you get a 6-letter code) or **join** with a code.
+1. **Log in or register** (name + password) on the first page.
+2. **Create a room** (you get a 6-letter code) or **join** with a code.
    Share the code with friends.
 2. Enter your name, pick your favourite IPL team (taken teams are locked —
    one bidder per team).

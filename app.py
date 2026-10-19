@@ -16,6 +16,7 @@ import time
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
+from werkzeug.security import generate_password_hash, check_password_hash
 
 from data import TEAMS, MODES, PLAYERS
 
@@ -83,10 +84,38 @@ def init_db():
     c.execute("""CREATE TABLE IF NOT EXISTS events(
         seq INTEGER PRIMARY KEY AUTOINCREMENT, room_code TEXT NOT NULL,
         ts REAL NOT NULL, type TEXT NOT NULL, data TEXT NOT NULL)""")
+    c.execute("""CREATE TABLE IF NOT EXISTS users(
+        id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL,
+        pw_hash TEXT NOT NULL, created_at REAL NOT NULL)""")
+    c.execute("""CREATE TABLE IF NOT EXISTS sessions(
+        token TEXT PRIMARY KEY, user_id INTEGER NOT NULL,
+        created_at REAL NOT NULL)""")
     c.execute("CREATE INDEX IF NOT EXISTS idx_events_room ON events(room_code, seq)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_players_room ON players(room_code, status)")
+    # bidders.user_id added after rooms shipped; migrate old DBs
+    cols = [r["name"] for r in c.execute("PRAGMA table_info(bidders)").fetchall()]
+    if "user_id" not in cols:
+        c.execute("ALTER TABLE bidders ADD COLUMN user_id INTEGER")
+    c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_bidders_room_user"
+              " ON bidders(room_code, user_id)")
     con.commit()
     con.close()
+
+
+def auth_user(con, token):
+    """Return the logged-in user row for a session token, or None."""
+    if not token:
+        return None
+    return con.execute(
+        "SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=?",
+        (token,)).fetchone()
+
+
+def new_session(con, user_id):
+    token = secrets.token_hex(16)
+    con.execute("INSERT INTO sessions(token,user_id,created_at) VALUES (?,?,?)",
+                (token, user_id, time.time()))
+    return token
 
 
 def seed_room_players(con, code):
@@ -278,7 +307,7 @@ def static_files(filename):
 
 @app.post("/api/rooms")
 def api_create_room():
-    """Create a room. Body: {name}. Returns {code, host_token}."""
+    """Create a room. Body: {name, auth}. Returns {code, host_token}."""
     body = request.get_json(force=True)
     name = (body.get("name") or "").strip()[:30]
     if not name:
@@ -286,6 +315,8 @@ def api_create_room():
     with lock:
         con = db()
         try:
+            if not auth_user(con, body.get("auth")):
+                return jsonify({"ok": False, "error": "Please log in first."}), 401
             code = new_room_code(con)
             host_token = secrets.token_hex(8)
             con.execute("INSERT INTO rooms(code, host_token, created_at) VALUES (?,?,?)",
@@ -300,9 +331,68 @@ def api_create_room():
             con.close()
 
 
+@app.post("/api/auth/register")
+def api_register():
+    """Register a new account. Body: {name, password}. Returns {token, name}."""
+    body = request.get_json(force=True)
+    name = (body.get("name") or "").strip()[:30]
+    password = body.get("password") or ""
+    if not name:
+        return jsonify({"ok": False, "error": "Please enter your name."}), 400
+    if len(password) < 4:
+        return jsonify({"ok": False, "error": "Password must be at least 4 characters."}), 400
+    with lock:
+        con = db()
+        try:
+            if con.execute("SELECT 1 FROM users WHERE lower(name)=lower(?)",
+                           (name,)).fetchone():
+                return jsonify({"ok": False, "error": "That name is taken. Try logging in."}), 409
+            cur = con.execute("INSERT INTO users(name,pw_hash,created_at) VALUES (?,?,?)",
+                              (name, generate_password_hash(password), time.time()))
+            token = new_session(con, cur.lastrowid)
+            con.commit()
+            return jsonify({"ok": True, "token": token, "name": name})
+        finally:
+            con.close()
+
+
+@app.post("/api/auth/login")
+def api_login():
+    """Log in. Body: {name, password}. Returns {token, name}."""
+    body = request.get_json(force=True)
+    name = (body.get("name") or "").strip()
+    password = body.get("password") or ""
+    with lock:
+        con = db()
+        try:
+            u = con.execute("SELECT * FROM users WHERE lower(name)=lower(?)",
+                            (name,)).fetchone()
+            if not u or not check_password_hash(u["pw_hash"], password):
+                return jsonify({"ok": False, "error": "Wrong name or password."}), 401
+            token = new_session(con, u["id"])
+            con.commit()
+            return jsonify({"ok": True, "token": token, "name": u["name"]})
+        finally:
+            con.close()
+
+
+@app.post("/api/auth/logout")
+def api_logout():
+    body = request.get_json(force=True)
+    with lock:
+        con = db()
+        try:
+            con.execute("DELETE FROM sessions WHERE token=?", (body.get("token"),))
+            con.commit()
+            return jsonify({"ok": True})
+        finally:
+            con.close()
+
+
 @app.get("/api/r/<code>/state")
 def api_state(code):
     token = request.args.get("token", "")
+    auth = request.args.get("auth", "")
     since = int(request.args.get("since", "0") or 0)
     with lock:
         con = db()
@@ -314,6 +404,7 @@ def api_state(code):
             now = time.time()
             tick(con, code, now)
             a = con.execute("SELECT * FROM auction WHERE room_code=?", (code,)).fetchone()
+            u = auth_user(con, auth)
             me = None
             if token:
                 r = con.execute("SELECT * FROM bidders WHERE token=? AND room_code=?",
@@ -378,6 +469,7 @@ def api_state(code):
                 "now": now,
                 "seq": max_seq,
                 "room": {"code": code},
+                "user": {"name": u["name"]} if u else None,
                 "auction": {"mode": a["mode"], "status": a["status"],
                             "mode_cfg": mode_cfg(a["mode"]) if a["mode"] else None,
                             "result_until": a["result_until"]},
@@ -414,14 +506,22 @@ def api_join(code):
             if err:
                 return err
             code = room["code"]
+            u = auth_user(con, body.get("auth"))
+            if not u:
+                return jsonify({"ok": False,
+                                "error": "Please log in first."}), 401
             if con.execute("SELECT 1 FROM bidders WHERE room_code=? AND team_id=?",
                            (code, team_id)).fetchone():
                 return jsonify({"ok": False,
                                 "error": f"{TEAMS[team_id][1]} is already taken."}), 409
+            if con.execute("SELECT 1 FROM bidders WHERE room_code=? AND user_id=?",
+                           (code, u["id"])).fetchone():
+                return jsonify({"ok": False,
+                                "error": "You've already joined this room."}), 409
             token = secrets.token_hex(8)
-            con.execute("INSERT INTO bidders(room_code,name,team_id,token,joined_at)"
-                        " VALUES (?,?,?,?,?)",
-                        (code, name, team_id, token, time.time()))
+            con.execute("INSERT INTO bidders(room_code,name,team_id,token,user_id,joined_at)"
+                        " VALUES (?,?,?,?,?,?)",
+                        (code, name, team_id, token, u["id"], time.time()))
             emit(con, code, "team_joined", {"name": name, "team_id": team_id,
                                             "team_name": TEAMS[team_id][1]})
             con.commit()

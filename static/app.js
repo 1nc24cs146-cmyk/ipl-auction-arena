@@ -1,6 +1,8 @@
 /* IPL Auction Arena - frontend (rooms edition) */
 const $ = (id) => document.getElementById(id);
 const store = {
+  get auth() { return localStorage.getItem("auc_auth") || ""; },
+  set auth(v) { v ? localStorage.setItem("auc_auth", v) : localStorage.removeItem("auc_auth"); },
   get roomCode() { return localStorage.getItem("auc_room") || ""; },
   set roomCode(v) { v ? localStorage.setItem("auc_room", v) : localStorage.removeItem("auc_room"); },
   get token() {
@@ -107,9 +109,10 @@ function handleEvent(e) {
 
 /* ---------------- polling ---------------- */
 async function poll() {
-  if (!store.roomCode) { showView("rooms"); return; }
+  if (!store.auth) { showView("auth"); return; }
+  if (!store.roomCode) { showView("rooms"); renderUserBadge(); return; }
   try {
-    const st = await api(`${R("/state")}?token=${store.token}&since=${lastSeq}`);
+    const st = await api(`${R("/state")}?token=${store.token}&auth=${store.auth}&since=${lastSeq}`);
     if (st && st.ok === false) {
       // room gone or invalid
       $("joinRoomMsg").textContent = st.error || "Room not found.";
@@ -132,7 +135,19 @@ setInterval(updateTimer, 400);
 
 /* ---------------- views ---------------- */
 function showView(name) {
-  ["rooms", "lobby", "auction"].forEach(v => $("view-" + v).classList.toggle("hidden", v !== name));
+  ["auth", "rooms", "lobby", "auction"].forEach(v => $("view-" + v).classList.toggle("hidden", v !== name));
+}
+function renderUserBadge() {
+  const u = S && S.user ? S.user.name : null;
+  const badge = $("userBadge"), btn = $("logoutBtn");
+  if (u) {
+    badge.textContent = "👤 " + u;
+    badge.classList.remove("hidden");
+    btn.classList.remove("hidden");
+  } else {
+    badge.classList.add("hidden");
+    btn.classList.add("hidden");
+  }
 }
 function leaveRoomLocal() {
   store.token = "";
@@ -140,9 +155,16 @@ function leaveRoomLocal() {
   S = null; lastSeq = 0; lastSpokenSeq = 0; pickedTeam = null;
   showView("rooms");
 }
+function logoutLocal() {
+  store.auth = "";
+  leaveRoomLocal();
+  showView("auth");
+}
 
 /* ---------------- render ---------------- */
 function render() {
+  if (!store.auth) { showView("auth"); return; }
+  renderUserBadge();
   if (!store.roomCode) { showView("rooms"); return; }
   const rb = $("roomBadge");
   rb.textContent = "Room " + store.roomCode;
@@ -366,10 +388,42 @@ function renderOverlay() {
 }
 
 /* ---------------- actions ---------------- */
+document.querySelectorAll("[data-authtab]").forEach(t => t.onclick = () => {
+  document.querySelectorAll("[data-authtab]").forEach(x => x.classList.remove("active"));
+  t.classList.add("active");
+  const tab = t.dataset.authtab;
+  $("pane-login").classList.toggle("hidden", tab !== "login");
+  $("pane-register").classList.toggle("hidden", tab !== "register");
+});
+async function authDone(r, msgEl) {
+  if (r.ok) {
+    store.auth = r.token;
+    $(msgEl).textContent = "";
+    lastSeq = 0; lastSpokenSeq = 0;
+    poll();
+  } else $(msgEl).textContent = r.error || "Something went wrong.";
+}
+$("loginBtn").onclick = async () => {
+  const r = await api("/api/auth/login", "POST",
+    { name: $("loginName").value.trim(), password: $("loginPass").value });
+  authDone(r, "loginMsg");
+};
+$("registerBtn").onclick = async () => {
+  const r = await api("/api/auth/register", "POST",
+    { name: $("regName").value.trim(), password: $("regPass").value });
+  authDone(r, "regMsg");
+};
+[$("loginPass"), $("regPass")].forEach(el => el.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") (el.id === "loginPass" ? $("loginBtn") : $("registerBtn")).click();
+}));
+$("logoutBtn").onclick = async () => {
+  try { await api("/api/auth/logout", "POST", { token: store.auth }); } catch (e) {}
+  logoutLocal();
+};
 $("createRoomBtn").onclick = async () => {
   const name = $("createNameInput").value.trim();
   if (!name) { $("createMsg").textContent = "Enter your name first."; return; }
-  const r = await api("/api/rooms", "POST", { name });
+  const r = await api("/api/rooms", "POST", { name, auth: store.auth });
   if (r.ok) {
     store.roomCode = r.code;
     $("nameInput").value = name; // prefill for team join
@@ -410,7 +464,7 @@ $("joinBtn").onclick = async () => {
   const name = $("nameInput").value.trim();
   if (!name) { $("joinMsg").textContent = "Enter your name first."; return; }
   if (pickedTeam == null) { $("joinMsg").textContent = "Pick your team above."; return; }
-  const r = await api(R("/join"), "POST", { name, team_id: pickedTeam });
+  const r = await api(R("/join"), "POST", { name, team_id: pickedTeam, auth: store.auth });
   if (r.ok) { store.token = r.token; $("joinMsg").textContent = ""; poll(); }
   else $("joinMsg").textContent = r.error || "Could not join.";
 };
@@ -441,5 +495,5 @@ document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
   ["upcoming", "sold", "unsold"].forEach(k => $("tab-" + k).classList.toggle("hidden", k !== activeTab));
 });
 
-showView("rooms");
+showView("auth");
 poll();

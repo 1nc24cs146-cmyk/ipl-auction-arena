@@ -10,16 +10,45 @@
 <header class="topbar">
   <div class="brand">🏏 <span>Auction Arena</span></div>
   <div class="top-right">
+    <div id="userBadge" class="mode-badge hidden"></div>
     <div id="roomBadge" class="mode-badge hidden"></div>
     <div id="modeBadge" class="mode-badge hidden"></div>
+    <button id="logoutBtn" class="icon-btn hidden" title="Log out">⎋</button>
     <button id="voiceToggle" class="icon-btn on" title="Toggle auctioneer voice">🔊</button>
   </div>
 </header>
 
 <div id="captionBar" class="caption hidden">🎙️ <span id="captionText"></span></div>
 
+<!-- ============ AUTH ============ -->
+<main id="view-auth" class="view">
+  <section class="hero">
+    <h1>IPL Auction Arena</h1>
+    <p>Log in or create your account to play.</p>
+  </section>
+
+  <section class="card join-card">
+    <div class="tabs" style="margin-bottom:16px">
+      <button class="tab active" data-authtab="login">Login</button>
+      <button class="tab" data-authtab="register">Register</button>
+    </div>
+    <div id="pane-login">
+      <input id="loginName" maxlength="30" placeholder="Your name" autocomplete="username">
+      <input id="loginPass" type="password" placeholder="Password" autocomplete="current-password">
+      <div id="loginMsg" class="msg"></div>
+      <button id="loginBtn" class="btn primary big">Log In</button>
+    </div>
+    <div id="pane-register" class="hidden">
+      <input id="regName" maxlength="30" placeholder="Pick a display name" autocomplete="username">
+      <input id="regPass" type="password" placeholder="Choose a password (min 4 characters)" autocomplete="new-password">
+      <div id="regMsg" class="msg"></div>
+      <button id="registerBtn" class="btn primary big">Create Account</button>
+    </div>
+  </section>
+</main>
+
 <!-- ============ ROOMS ============ -->
-<main id="view-rooms" class="view">
+<main id="view-rooms" class="view hidden">
   <section class="hero">
     <h1>IPL Auction Arena</h1>
     <p>Create a room, share the code, and bid against your friends.</p>
