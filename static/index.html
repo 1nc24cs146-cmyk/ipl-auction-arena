@@ -24,7 +24,7 @@
 <main id="view-auth" class="view">
   <section class="hero">
     <h1>IPL Auction Arena</h1>
-    <p>Log in or create your account to play.</p>
+    <p>Log in or create your account with your Gmail.</p>
   </section>
 
   <section class="card join-card">
@@ -33,16 +33,33 @@
       <button class="tab" data-authtab="register">Register</button>
     </div>
     <div id="pane-login">
-      <input id="loginName" maxlength="30" placeholder="Your name" autocomplete="username">
-      <input id="loginPass" type="password" placeholder="Password" autocomplete="current-password">
-      <div id="loginMsg" class="msg"></div>
-      <button id="loginBtn" class="btn primary big">Log In</button>
+      <div id="loginStep1">
+        <input id="loginEmail" maxlength="80" placeholder="Your Gmail address" autocomplete="email" inputmode="email">
+        <div id="loginMsg" class="msg"></div>
+        <button id="loginSendBtn" class="btn primary big">Send Code</button>
+      </div>
+      <div id="loginStep2" class="hidden">
+        <p style="color:var(--mut);font-size:14px">We sent a 6-digit code to <b id="loginEmailEcho"></b>.</p>
+        <input id="loginCode" maxlength="6" placeholder="Enter the 6-digit code" inputmode="numeric">
+        <div id="loginMsg2" class="msg"></div>
+        <button id="loginVerifyBtn" class="btn primary big">Verify & Log In</button>
+        <div style="margin-top:10px"><a href="#" id="loginBack" style="color:var(--mut);font-size:13px">← use a different email</a></div>
+      </div>
     </div>
     <div id="pane-register" class="hidden">
-      <input id="regName" maxlength="30" placeholder="Pick a display name" autocomplete="username">
-      <input id="regPass" type="password" placeholder="Choose a password (min 4 characters)" autocomplete="new-password">
-      <div id="regMsg" class="msg"></div>
-      <button id="registerBtn" class="btn primary big">Create Account</button>
+      <div id="regStep1">
+        <input id="regName" maxlength="30" placeholder="Your name" autocomplete="username">
+        <input id="regEmail" maxlength="80" placeholder="Your Gmail address" autocomplete="email" inputmode="email">
+        <div id="regMsg" class="msg"></div>
+        <button id="regSendBtn" class="btn primary big">Send Code</button>
+      </div>
+      <div id="regStep2" class="hidden">
+        <p style="color:var(--mut);font-size:14px">We sent a 6-digit code to <b id="regEmailEcho"></b>.</p>
+        <input id="regCode" maxlength="6" placeholder="Enter the 6-digit code" inputmode="numeric">
+        <div id="regMsg2" class="msg"></div>
+        <button id="regVerifyBtn" class="btn primary big">Verify & Create Account</button>
+        <div style="margin-top:10px"><a href="#" id="regBack" style="color:var(--mut);font-size:13px">← use a different email</a></div>
+      </div>
     </div>
   </section>
 </main>

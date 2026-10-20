@@ -16,7 +16,13 @@ import time
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
-from werkzeug.security import generate_password_hash, check_password_hash
+
+import hashlib
+import hmac
+import re
+import smtplib
+import ssl
+from email.message import EmailMessage
 
 from data import TEAMS, MODES, PLAYERS
 
@@ -84,14 +90,35 @@ def init_db():
     c.execute("""CREATE TABLE IF NOT EXISTS events(
         seq INTEGER PRIMARY KEY AUTOINCREMENT, room_code TEXT NOT NULL,
         ts REAL NOT NULL, type TEXT NOT NULL, data TEXT NOT NULL)""")
-    c.execute("""CREATE TABLE IF NOT EXISTS users(
-        id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL,
-        pw_hash TEXT NOT NULL, created_at REAL NOT NULL)""")
+    # users: OTP accounts are email-based (pw_hash obsolete, name not unique).
+    # Fresh DBs get the new schema; old ones are rebuilt, preserving rows.
+    has_users = c.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
+    if has_users:
+        cols = [r["name"] for r in c.execute("PRAGMA table_info(users)").fetchall()]
+        if "email" not in cols:
+            c.execute("ALTER TABLE users RENAME TO users_old")
+            c.execute("""CREATE TABLE users(
+                id INTEGER PRIMARY KEY, name TEXT NOT NULL,
+                pw_hash TEXT, email TEXT, created_at REAL NOT NULL)""")
+            c.execute("INSERT INTO users(id,name,pw_hash,email,created_at)"
+                      " SELECT id,name,pw_hash,NULL,created_at FROM users_old")
+            c.execute("DROP TABLE users_old")
+    else:
+        c.execute("""CREATE TABLE users(
+            id INTEGER PRIMARY KEY, name TEXT NOT NULL,
+            pw_hash TEXT, email TEXT, created_at REAL NOT NULL)""")
+    c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)")
     c.execute("""CREATE TABLE IF NOT EXISTS sessions(
         token TEXT PRIMARY KEY, user_id INTEGER NOT NULL,
         created_at REAL NOT NULL)""")
     c.execute("CREATE INDEX IF NOT EXISTS idx_events_room ON events(room_code, seq)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_players_room ON players(room_code, status)")
+    c.execute("""CREATE TABLE IF NOT EXISTS otp_codes(
+        id INTEGER PRIMARY KEY, email TEXT NOT NULL, code_hash TEXT NOT NULL,
+        created_at REAL NOT NULL, expires_at REAL NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0, used INTEGER NOT NULL DEFAULT 0)""")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_otp_email ON otp_codes(email, id)")
     # rooms.owner_user_id added with lobby start rules; migrate old DBs
     cols = [r["name"] for r in c.execute("PRAGMA table_info(rooms)").fetchall()]
     if "owner_user_id" not in cols:
@@ -354,47 +381,132 @@ def api_create_room():
             con.close()
 
 
-@app.post("/api/auth/register")
-def api_register():
-    """Register a new account. Body: {name, password}. Returns {token, name}."""
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+OTP_TTL = 600        # codes expire after 10 minutes
+OTP_COOLDOWN = 60    # seconds between code requests for the same email
+OTP_MAX_ATTEMPTS = 5  # wrong guesses before a code is voided
+
+
+def _mail_cfg():
+    """Gmail SMTP credentials from env. Empty strings mean not configured."""
+    return (os.environ.get("MAIL_USER", "").strip(),
+            os.environ.get("MAIL_APP_PASSWORD", "").strip())
+
+
+def send_otp_email(to_email, code):
+    """Email the OTP via Gmail SMTP. Returns True on success."""
+    user, pw = _mail_cfg()
+    if not user or not pw:
+        return False
+    msg = EmailMessage()
+    msg["From"] = user
+    msg["To"] = to_email
+    msg["Subject"] = "Your IPL Auction Arena login code"
+    msg.set_content(
+        f"Your one-time login code is: {code}\n\n"
+        "It expires in 10 minutes. If you didn't request this, just ignore this email.\n"
+        "— IPL Auction Arena")
+    ctx = ssl.create_default_context()
+    with smtplib.SMTP("smtp.gmail.com", 587, timeout=20) as s:
+        s.starttls(context=ctx)
+        s.login(user, pw)
+        s.send_message(msg)
+    return True
+
+
+def _hash_code(email, code):
+    return hashlib.sha256(f"{email.lower()}:{code}".encode()).hexdigest()
+
+
+@app.post("/api/auth/request_otp")
+def api_request_otp():
+    """Send a 6-digit code to an email address. Body: {email}."""
     body = request.get_json(force=True)
-    name = (body.get("name") or "").strip()[:30]
-    password = body.get("password") or ""
-    if not name:
-        return jsonify({"ok": False, "error": "Please enter your name."}), 400
-    if len(password) < 4:
-        return jsonify({"ok": False, "error": "Password must be at least 4 characters."}), 400
+    email = (body.get("email") or "").strip().lower()
+    if not EMAIL_RE.match(email):
+        return jsonify({"ok": False, "error": "Enter a valid email address."}), 400
     with lock:
         con = db()
         try:
-            if con.execute("SELECT 1 FROM users WHERE lower(name)=lower(?)",
-                           (name,)).fetchone():
-                return jsonify({"ok": False, "error": "That name is taken. Try logging in."}), 409
-            cur = con.execute("INSERT INTO users(name,pw_hash,created_at) VALUES (?,?,?)",
-                              (name, generate_password_hash(password), time.time()))
-            token = new_session(con, cur.lastrowid)
+            now = time.time()
+            last = con.execute(
+                "SELECT created_at FROM otp_codes WHERE email=? AND used=0"
+                " ORDER BY id DESC LIMIT 1", (email,)).fetchone()
+            if last and now - last["created_at"] < OTP_COOLDOWN:
+                wait = int(OTP_COOLDOWN - (now - last["created_at"]))
+                return jsonify({"ok": False,
+                                "error": f"Code already sent. Try again in {wait}s."}), 429
+            code = f"{secrets.randbelow(900000) + 100000}"
+            # void older pending codes for this email
+            con.execute("UPDATE otp_codes SET used=1 WHERE email=? AND used=0",
+                        (email,))
+            con.execute(
+                "INSERT INTO otp_codes(email,code_hash,created_at,expires_at)"
+                " VALUES (?,?,?,?)",
+                (email, _hash_code(email, code), now, now + OTP_TTL))
             con.commit()
-            return jsonify({"ok": True, "token": token, "name": name})
+            try:
+                ok = send_otp_email(email, code)
+            except Exception:
+                ok = False
+            if not ok:
+                # fail closed: void the code, never reveal it
+                con.execute("UPDATE otp_codes SET used=1 WHERE email=? AND used=0",
+                            (email,))
+                con.commit()
+                return jsonify({"ok": False,
+                                "error": "Couldn't send the code. The server's email"
+                                         " is not set up yet — ask the host to add it."}), 503
+            return jsonify({"ok": True})
         finally:
             con.close()
 
 
-@app.post("/api/auth/login")
-def api_login():
-    """Log in. Body: {name, password}. Returns {token, name}."""
+@app.post("/api/auth/verify_otp")
+def api_verify_otp():
+    """Verify a code. Body: {email, code, name?}. New emails need a name to
+    finish registering; existing accounts just log in. Returns {token, name}."""
     body = request.get_json(force=True)
-    name = (body.get("name") or "").strip()
-    password = body.get("password") or ""
+    email = (body.get("email") or "").strip().lower()
+    code = (body.get("code") or "").strip()
+    name = (body.get("name") or "").strip()[:30]
+    if not EMAIL_RE.match(email) or not code:
+        return jsonify({"ok": False, "error": "Enter your email and the code."}), 400
     with lock:
         con = db()
         try:
-            u = con.execute("SELECT * FROM users WHERE lower(name)=lower(?)",
-                            (name,)).fetchone()
-            if not u or not check_password_hash(u["pw_hash"], password):
-                return jsonify({"ok": False, "error": "Wrong name or password."}), 401
-            token = new_session(con, u["id"])
+            now = time.time()
+            row = con.execute(
+                "SELECT * FROM otp_codes WHERE email=? AND used=0"
+                " ORDER BY id DESC LIMIT 1", (email,)).fetchone()
+            if not row or now > row["expires_at"]:
+                return jsonify({"ok": False,
+                                "error": "That code expired. Request a new one."}), 401
+            if row["attempts"] >= OTP_MAX_ATTEMPTS:
+                con.execute("UPDATE otp_codes SET used=1 WHERE id=?", (row["id"],))
+                con.commit()
+                return jsonify({"ok": False,
+                                "error": "Too many wrong tries. Request a new code."}), 401
+            if not hmac.compare_digest(row["code_hash"], _hash_code(email, code)):
+                con.execute("UPDATE otp_codes SET attempts=attempts+1 WHERE id=?",
+                            (row["id"],))
+                con.commit()
+                return jsonify({"ok": False, "error": "Wrong code. Try again."}), 401
+            con.execute("UPDATE otp_codes SET used=1 WHERE id=?", (row["id"],))
+            u = con.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+            if not u:
+                if not name:
+                    return jsonify({"ok": False,
+                                    "error": "Enter your name to finish registering."}), 400
+                cur = con.execute(
+                    "INSERT INTO users(name,email,created_at) VALUES (?,?,?)",
+                    (name, email, now))
+                user_id, name = cur.lastrowid, name
+            else:
+                user_id, name = u["id"], u["name"]
+            token = new_session(con, user_id)
             con.commit()
-            return jsonify({"ok": True, "token": token, "name": u["name"]})
+            return jsonify({"ok": True, "token": token, "name": name})
         finally:
             con.close()
 

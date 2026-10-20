@@ -43,6 +43,21 @@ gunicorn). Easiest free route — **Render**:
 
 Railway and Fly.io work too — same build/start commands.
 
+### Email setup (required for Gmail OTP login)
+
+Login codes are emailed from a Gmail account via SMTP. Add two
+environment variables (on Render: **Environment** tab):
+
+| Variable            | Value                                     |
+|---------------------|-------------------------------------------|
+| `MAIL_USER`         | the Gmail address codes are sent from     |
+| `MAIL_APP_PASSWORD` | a Gmail **App Password** (16 letters)     |
+
+To create an App Password: Google Account → Security → turn on
+**2-Step Verification** → **App passwords** → create one for "Mail".
+Never use your normal Gmail password. Without these two variables,
+requesting a code fails with a clear message (and never leaks the code).
+
 ## The 3 modes
 
 | Mode | Purse | Squad | Overseas | Player pool |
@@ -53,7 +68,8 @@ Railway and Fly.io work too — same build/start commands.
 
 ## How it plays
 
-1. **Log in or register** (name + password) on the first page.
+1. **Log in or register with your Gmail** — enter your email, get a
+   6-digit code by email, enter it. Codes expire in 10 minutes.
 2. **Create a room** (you get a 6-letter code — you become the room owner)
    or **join** with a code. Share the code with friends.
 3. Enter your name, pick your favourite IPL team (taken teams are locked —

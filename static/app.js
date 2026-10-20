@@ -413,23 +413,63 @@ document.querySelectorAll("[data-authtab]").forEach(t => t.onclick = () => {
 async function authDone(r, msgEl) {
   if (r.ok) {
     store.auth = r.token;
-    $(msgEl).textContent = "";
+    ["loginMsg", "loginMsg2", "regMsg", "regMsg2"].forEach(id => { const el = $(id); if (el) el.textContent = ""; });
     lastSeq = 0; lastSpokenSeq = 0;
     poll();
   } else $(msgEl).textContent = r.error || "Something went wrong.";
 }
-$("loginBtn").onclick = async () => {
-  const r = await api("/api/auth/login", "POST",
-    { name: $("loginName").value.trim(), password: $("loginPass").value });
-  authDone(r, "loginMsg");
+/* login: email -> send code -> verify */
+$("loginSendBtn").onclick = async () => {
+  const email = $("loginEmail").value.trim();
+  if (!email) { $("loginMsg").textContent = "Enter your email first."; return; }
+  const btn = $("loginSendBtn"); btn.disabled = true; btn.textContent = "Sending…";
+  const r = await api("/api/auth/request_otp", "POST", { email });
+  btn.disabled = false; btn.textContent = "Send Code";
+  if (r.ok) {
+    $("loginEmailEcho").textContent = email;
+    $("loginStep1").classList.add("hidden");
+    $("loginStep2").classList.remove("hidden");
+    $("loginCode").focus();
+  } else $("loginMsg").textContent = r.error || "Could not send the code.";
 };
-$("registerBtn").onclick = async () => {
-  const r = await api("/api/auth/register", "POST",
-    { name: $("regName").value.trim(), password: $("regPass").value });
-  authDone(r, "regMsg");
+$("loginVerifyBtn").onclick = async () => {
+  const r = await api("/api/auth/verify_otp", "POST",
+    { email: $("loginEmail").value.trim(), code: $("loginCode").value.trim() });
+  authDone(r, "loginMsg2");
 };
-[$("loginPass"), $("regPass")].forEach(el => el.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") (el.id === "loginPass" ? $("loginBtn") : $("registerBtn")).click();
+$("loginBack").onclick = (e) => {
+  e.preventDefault();
+  $("loginStep2").classList.add("hidden");
+  $("loginStep1").classList.remove("hidden");
+};
+/* register: name + email -> send code -> verify */
+$("regSendBtn").onclick = async () => {
+  const name = $("regName").value.trim(), email = $("regEmail").value.trim();
+  if (!name) { $("regMsg").textContent = "Enter your name first."; return; }
+  if (!email) { $("regMsg").textContent = "Enter your email first."; return; }
+  const btn = $("regSendBtn"); btn.disabled = true; btn.textContent = "Sending…";
+  const r = await api("/api/auth/request_otp", "POST", { email });
+  btn.disabled = false; btn.textContent = "Send Code";
+  if (r.ok) {
+    $("regEmailEcho").textContent = email;
+    $("regStep1").classList.add("hidden");
+    $("regStep2").classList.remove("hidden");
+    $("regCode").focus();
+  } else $("regMsg").textContent = r.error || "Could not send the code.";
+};
+$("regVerifyBtn").onclick = async () => {
+  const r = await api("/api/auth/verify_otp", "POST",
+    { email: $("regEmail").value.trim(), code: $("regCode").value.trim(),
+      name: $("regName").value.trim() });
+  authDone(r, "regMsg2");
+};
+$("regBack").onclick = (e) => {
+  e.preventDefault();
+  $("regStep2").classList.add("hidden");
+  $("regStep1").classList.remove("hidden");
+};
+[$("loginCode"), $("regCode")].forEach(el => el.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") (el.id === "loginCode" ? $("loginVerifyBtn") : $("regVerifyBtn")).click();
 }));
 $("logoutBtn").onclick = async () => {
   try { await api("/api/auth/logout", "POST", { token: store.auth }); } catch (e) {}
