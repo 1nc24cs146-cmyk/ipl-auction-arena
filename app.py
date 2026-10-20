@@ -22,6 +22,8 @@ import hmac
 import re
 import smtplib
 import ssl
+import urllib.error
+import urllib.request
 from email.message import EmailMessage
 
 from data import TEAMS, MODES, PLAYERS
@@ -393,8 +395,43 @@ def _mail_cfg():
             os.environ.get("MAIL_APP_PASSWORD", "").strip())
 
 
+def _brevo_key():
+    """Brevo (HTTPS email API) key from env. Empty string means not set up."""
+    return os.environ.get("BREVO_API_KEY", "").strip()
+
+
+def _send_via_brevo(to_email, code):
+    """Send the OTP through Brevo's HTTPS API. Render blocks outbound SMTP
+    ports, so on the deployed site this API path is the one that works.
+    MAIL_USER doubles as the From address and must be a verified Brevo
+    sender. Returns True on success."""
+    key = _brevo_key()
+    sender, _pw = _mail_cfg()
+    if not key or not sender:
+        return False
+    payload = json.dumps({
+        "sender": {"name": "IPL Auction Arena", "email": sender},
+        "to": [{"email": to_email}],
+        "subject": "Your IPL Auction Arena login code",
+        "textContent": (
+            f"Your one-time login code is: {code}\n\n"
+            "It expires in 10 minutes. If you didn't request this, just "
+            "ignore this email.\n— IPL Auction Arena"),
+    }).encode()
+    req = urllib.request.Request(
+        "https://api.brevo.com/v3/smtp/email", data=payload, method="POST",
+        headers={"api-key": key, "Content-Type": "application/json",
+                 "Accept": "application/json"})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        return 200 <= r.status < 300
+
+
 def send_otp_email(to_email, code):
-    """Email the OTP via Gmail SMTP. Returns True on success."""
+    """Email the OTP. Prefers the Brevo HTTPS API when BREVO_API_KEY is set
+    (works from Render, which blocks SMTP ports); otherwise falls back to
+    Gmail SMTP (works locally). Returns True on success."""
+    if _brevo_key():
+        return _send_via_brevo(to_email, code)
     user, pw = _mail_cfg()
     if not user or not pw:
         return False
@@ -424,7 +461,22 @@ def api_mail_status():
     sign-in? Never returns the credentials themselves, only a status word:
     not_configured | ok | auth_failed | network_error."""
     user, pw = _mail_cfg()
-    if not user or not pw:
+    if _brevo_key():
+        # Brevo path (used on Render): the key is valid if the account
+        # endpoint answers 200.
+        try:
+            req = urllib.request.Request(
+                "https://api.brevo.com/v3/account",
+                headers={"api-key": _brevo_key(), "Accept": "application/json"})
+            with urllib.request.urlopen(req, timeout=15) as r:
+                mail_ok = r.status == 200
+            status = "ok" if mail_ok else "network_error"
+        except urllib.error.HTTPError as e:
+            mail_ok = False
+            status = "auth_failed" if e.code in (401, 403) else "network_error"
+        except Exception:
+            mail_ok, status = False, "network_error"
+    elif not user or not pw:
         mail_ok, status = False, "not_configured"
     else:
         try:

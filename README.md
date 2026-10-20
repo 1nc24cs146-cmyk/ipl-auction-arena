@@ -43,20 +43,38 @@ gunicorn). Easiest free route — **Render**:
 
 Railway and Fly.io work too — same build/start commands.
 
-### Email setup (required for Gmail OTP login)
+### Email setup (required for OTP login)
 
-Login codes are emailed from a Gmail account via SMTP. Add two
-environment variables (on Render: **Environment** tab):
+Login codes are emailed through **Brevo's HTTPS API**. (Gmail SMTP does
+not work from Render — Render blocks outbound SMTP ports 25/465/587, so
+the Gmail route below is kept only as a local-development fallback.)
 
-| Variable            | Value                                     |
-|---------------------|-------------------------------------------|
-| `MAIL_USER`         | the Gmail address codes are sent from     |
-| `MAIL_APP_PASSWORD` | a Gmail **App Password** (16 letters)     |
+Add these environment variables (on Render: **Environment** tab):
 
-To create an App Password: Google Account → Security → turn on
-**2-Step Verification** → **App passwords** → create one for "Mail".
-Never use your normal Gmail password. Without these two variables,
-requesting a code fails with a clear message (and never leaks the code).
+| Variable        | Value                                            |
+|-----------------|--------------------------------------------------|
+| `MAIL_USER`     | the Gmail address codes appear to come from      |
+| `BREVO_API_KEY` | a Brevo API key (starts with `xkeysib-`)         |
+
+Brevo setup (free tier, no domain needed):
+
+1. Sign up at brevo.com with the same Gmail.
+2. Verify the sender: **Senders, Domains & Dedicated IPs → Senders →
+   Add a sender** — name `IPL Auction Arena`, email = your Gmail →
+   click the confirmation link Brevo emails to that inbox.
+3. Create a key: **Settings → SMTP & API → API Keys → Generate a new
+   API key**, and paste it into `BREVO_API_KEY` on Render.
+
+Gmail SMTP fallback (local development only): if `BREVO_API_KEY` is
+unset, codes are sent via Gmail SMTP using `MAIL_APP_PASSWORD` — a
+Gmail **App Password** (16 letters; Google Account → Security → turn on
+**2-Step Verification** → **App passwords**). Never use your normal
+Gmail password. With no email route configured, requesting a code
+fails with a clear message (and never leaks the code).
+
+You can check the live mail setup at any time:
+`GET /api/auth/mail_status` returns `{"mail_ok": true, "status": "ok"}`
+when codes can be sent.
 
 ## The 3 modes
 
