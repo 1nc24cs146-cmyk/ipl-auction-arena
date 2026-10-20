@@ -3,6 +3,8 @@ const $ = (id) => document.getElementById(id);
 const store = {
   get auth() { return localStorage.getItem("auc_auth") || ""; },
   set auth(v) { v ? localStorage.setItem("auc_auth", v) : localStorage.removeItem("auc_auth"); },
+  get name() { return localStorage.getItem("auc_name") || ""; },
+  set name(v) { v ? localStorage.setItem("auc_name", v) : localStorage.removeItem("auc_name"); },
   get roomCode() { return localStorage.getItem("auc_room") || ""; },
   set roomCode(v) { v ? localStorage.setItem("auc_room", v) : localStorage.removeItem("auc_room"); },
   get token() {
@@ -138,12 +140,14 @@ function showView(name) {
   ["auth", "rooms", "lobby", "auction"].forEach(v => $("view-" + v).classList.toggle("hidden", v !== name));
 }
 function renderUserBadge() {
-  const u = S && S.user ? S.user.name : null;
+  const u = (S && S.user ? S.user.name : null) || store.name || null;
   const badge = $("userBadge"), btn = $("logoutBtn");
   if (u) {
     badge.textContent = "👤 " + u;
     badge.classList.remove("hidden");
     btn.classList.remove("hidden");
+    const rn = $("roomsUserName");
+    if (rn) rn.textContent = u;
   } else {
     badge.classList.add("hidden");
     btn.classList.add("hidden");
@@ -157,8 +161,15 @@ function leaveRoomLocal() {
 }
 function logoutLocal() {
   store.auth = "";
+  store.name = "";
   leaveRoomLocal();
   showView("auth");
+  // logging out lands directly on the registration page
+  selectAuthTab("register");
+  $("regStep2").classList.add("hidden");
+  $("regStep1").classList.remove("hidden");
+  $("loginStep2").classList.add("hidden");
+  $("loginStep1").classList.remove("hidden");
 }
 
 /* ---------------- render ---------------- */
@@ -403,16 +414,17 @@ function renderOverlay() {
 }
 
 /* ---------------- actions ---------------- */
-document.querySelectorAll("[data-authtab]").forEach(t => t.onclick = () => {
-  document.querySelectorAll("[data-authtab]").forEach(x => x.classList.remove("active"));
-  t.classList.add("active");
-  const tab = t.dataset.authtab;
+function selectAuthTab(tab) {
+  document.querySelectorAll("[data-authtab]").forEach(x =>
+    x.classList.toggle("active", x.dataset.authtab === tab));
   $("pane-login").classList.toggle("hidden", tab !== "login");
   $("pane-register").classList.toggle("hidden", tab !== "register");
-});
+}
+document.querySelectorAll("[data-authtab]").forEach(t => t.onclick = () => selectAuthTab(t.dataset.authtab));
 async function authDone(r, msgEl) {
   if (r.ok) {
     store.auth = r.token;
+    store.name = r.name || "";
     ["loginMsg", "loginMsg2", "regMsg", "regMsg2"].forEach(id => { const el = $(id); if (el) el.textContent = ""; });
     lastSeq = 0; lastSpokenSeq = 0;
     poll();
@@ -471,10 +483,12 @@ $("regBack").onclick = (e) => {
 [$("loginCode"), $("regCode")].forEach(el => el.addEventListener("keydown", (e) => {
   if (e.key === "Enter") (el.id === "loginCode" ? $("loginVerifyBtn") : $("regVerifyBtn")).click();
 }));
-$("logoutBtn").onclick = async () => {
+async function doLogout() {
   try { await api("/api/auth/logout", "POST", { token: store.auth }); } catch (e) {}
   logoutLocal();
-};
+}
+$("logoutBtn").onclick = doLogout;
+$("roomsLogoutBtn").onclick = doLogout;
 $("createRoomBtn").onclick = async () => {
   const name = $("createNameInput").value.trim();
   if (!name) { $("createMsg").textContent = "Enter your name first."; return; }

@@ -49,6 +49,9 @@ input#nameInput{width:100%;max-width:340px;padding:12px 14px;border-radius:10px;
 .btn.bid{background:linear-gradient(90deg,#1e9e52,#2ecc71);font-size:19px;width:100%;
   padding:16px;box-shadow:0 0 24px rgba(46,204,113,.35)}
 .msg{min-height:20px;font-size:14px;color:var(--red);margin:8px 0}
+.account-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:14px 20px;color:var(--mut);font-size:15px}
+.account-bar b{color:var(--txt)}
 .whoami{margin-top:10px;font-size:15px}
 
 /* team grid */
