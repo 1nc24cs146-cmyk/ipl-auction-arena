@@ -418,6 +418,28 @@ def _hash_code(email, code):
     return hashlib.sha256(f"{email.lower()}:{code}".encode()).hexdigest()
 
 
+@app.get("/api/auth/mail_status")
+def api_mail_status():
+    """Diagnostic: is the mail config present, and does Gmail accept the
+    sign-in? Never returns the credentials themselves, only a status word:
+    not_configured | ok | auth_failed | network_error."""
+    user, pw = _mail_cfg()
+    if not user or not pw:
+        mail_ok, status = False, "not_configured"
+    else:
+        try:
+            ctx = ssl.create_default_context()
+            with smtplib.SMTP("smtp.gmail.com", 587, timeout=15) as s:
+                s.starttls(context=ctx)
+                s.login(user, pw)
+            mail_ok, status = True, "ok"
+        except smtplib.SMTPAuthenticationError:
+            mail_ok, status = False, "auth_failed"
+        except Exception:
+            mail_ok, status = False, "network_error"
+    return jsonify({"ok": True, "mail_ok": mail_ok, "status": status})
+
+
 @app.post("/api/auth/request_otp")
 def api_request_otp():
     """Send a 6-digit code to an email address. Body: {email}."""
