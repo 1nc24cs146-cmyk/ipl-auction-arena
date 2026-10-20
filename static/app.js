@@ -186,7 +186,8 @@ function renderLobby() {
     ? `<div class="room-code-label" style="margin-top:10px">In this room (${members.length}):</div>` +
       members.map(m => {
         const t = S.teams[m.team_id];
-        return `<span class="member-chip" style="border-color:${t.color}">${esc(m.name)} · ${t.short}</span>`;
+        const crown = S.room && S.room.owner_name === m.name ? " 👑" : "";
+        return `<span class="member-chip" style="border-color:${t.color}">${esc(m.name)}${crown} · ${t.short}</span>`;
       }).join(" ")
     : `<div style="color:var(--mut);font-size:13px;margin-top:10px">No bidders yet — pick your team below.</div>`;
   // team grid
@@ -200,14 +201,28 @@ function renderLobby() {
     if (!t.occupied_by) d.onclick = () => { pickedTeam = t.id; renderLobby(); };
     g.appendChild(d);
   });
-  // mode cards
+  // start status + mode cards
+  const rm = S.room || {};
+  const n = rm.bidder_count || 0, min = rm.min_bidders || 5;
+  const isOwner = !!rm.is_owner;
+  let status = "";
+  if (!S.me) status = "Join a team above — then wait in the lobby for the room owner to start.";
+  else if (!isOwner) status = `You're in the lobby. Waiting for ${rm.owner_name ? esc(rm.owner_name) + " (room owner)" : "the room owner"} to start. Bidders joined: ${n}/${min} minimum.`;
+  else if (n < min) status = `You're the room owner. ${n} of ${min} minimum bidders joined — waiting for ${min - n} more before you can start.`;
+  else status = `You're the room owner and ${n} bidders are in — you can start the match!`;
+  $("startStatus").textContent = status;
   const mc = $("modeCards"); mc.innerHTML = "";
   Object.entries(S.modes).forEach(([key, m]) => {
     const d = document.createElement("div");
     d.className = "mode-card";
+    const canStart = S.me && isOwner && n >= min;
+    const btnLabel = !S.me ? `Start ${esc(m.label)}`
+      : !isOwner ? "Owner starts the match"
+      : n < min ? `Need ${min} bidders (${n}/${min})`
+      : `Start ${esc(m.label)}`;
     d.innerHTML = `<h3>${esc(m.label)}</h3><div class="purse">₹${m.purse_cr} Cr <small style="font-size:13px;color:var(--mut)">purse</small></div>
       <p>${esc(m.blurb)}<br>Squad: ${m.squad_size} players · Overseas ${m.min_overseas}–${m.max_overseas}</p>
-      <button class="btn primary" ${S.me ? "" : "disabled"}>Start ${esc(m.label)}</button>`;
+      <button class="btn primary" ${canStart ? "" : "disabled"}>${btnLabel}</button>`;
     d.querySelector("button").onclick = async () => {
       const r = await api(R("/start"), "POST", { token: store.token, mode: key });
       if (!r.ok) $("startMsg").textContent = r.error || "Could not start.";

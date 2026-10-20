@@ -92,6 +92,10 @@ def init_db():
         created_at REAL NOT NULL)""")
     c.execute("CREATE INDEX IF NOT EXISTS idx_events_room ON events(room_code, seq)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_players_room ON players(room_code, status)")
+    # rooms.owner_user_id added with lobby start rules; migrate old DBs
+    cols = [r["name"] for r in c.execute("PRAGMA table_info(rooms)").fetchall()]
+    if "owner_user_id" not in cols:
+        c.execute("ALTER TABLE rooms ADD COLUMN owner_user_id INTEGER")
     # bidders.user_id added after rooms shipped; migrate old DBs
     cols = [r["name"] for r in c.execute("PRAGMA table_info(bidders)").fetchall()]
     if "user_id" not in cols:
@@ -109,6 +113,22 @@ def auth_user(con, token):
     return con.execute(
         "SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=?",
         (token,)).fetchone()
+
+
+MIN_BIDDERS = 5  # a match cannot start with fewer bidders in the room
+
+
+def room_owner_id(con, code):
+    """Owner of a room: the creator's user id. Legacy rooms (no owner
+    recorded) fall back to the earliest-joined bidder still in the room."""
+    room = con.execute("SELECT owner_user_id FROM rooms WHERE code=?",
+                       (code,)).fetchone()
+    if room and room["owner_user_id"]:
+        return room["owner_user_id"]
+    b = con.execute("SELECT user_id FROM bidders WHERE room_code=?"
+                    " AND user_id IS NOT NULL ORDER BY joined_at LIMIT 1",
+                    (code,)).fetchone()
+    return b["user_id"] if b else None
 
 
 def new_session(con, user_id):
@@ -307,7 +327,8 @@ def static_files(filename):
 
 @app.post("/api/rooms")
 def api_create_room():
-    """Create a room. Body: {name, auth}. Returns {code, host_token}."""
+    """Create a room. Body: {name, auth}. Returns {code, host_token}.
+    The creator becomes the room owner — only they can start the match."""
     body = request.get_json(force=True)
     name = (body.get("name") or "").strip()[:30]
     if not name:
@@ -315,12 +336,14 @@ def api_create_room():
     with lock:
         con = db()
         try:
-            if not auth_user(con, body.get("auth")):
+            u = auth_user(con, body.get("auth"))
+            if not u:
                 return jsonify({"ok": False, "error": "Please log in first."}), 401
             code = new_room_code(con)
             host_token = secrets.token_hex(8)
-            con.execute("INSERT INTO rooms(code, host_token, created_at) VALUES (?,?,?)",
-                        (code, host_token, time.time()))
+            con.execute("INSERT INTO rooms(code, host_token, created_at, owner_user_id)"
+                        " VALUES (?,?,?,?)",
+                        (code, host_token, time.time(), u["id"]))
             con.execute("INSERT INTO auction(room_code, status) VALUES (?, 'lobby')",
                         (code,))
             seed_room_players(con, code)
@@ -465,10 +488,17 @@ def api_state(code):
             bidders = [{"name": b["name"], "team_id": b["team_id"]}
                        for b in con.execute("SELECT name, team_id FROM bidders"
                                             " WHERE room_code=? ORDER BY joined_at", (code,))]
+            owner_id = room_owner_id(con, code)
+            owner_row = con.execute("SELECT name, team_id FROM bidders"
+                                    " WHERE room_code=? AND user_id=?",
+                                    (code, owner_id)).fetchone()
             return jsonify({
                 "now": now,
                 "seq": max_seq,
-                "room": {"code": code},
+                "room": {"code": code, "bidder_count": len(bidders),
+                         "min_bidders": MIN_BIDDERS,
+                         "is_owner": bool(me and u and u["id"] == owner_id),
+                         "owner_name": owner_row["name"] if owner_row else None},
                 "user": {"name": u["name"]} if u else None,
                 "auction": {"mode": a["mode"], "status": a["status"],
                             "mode_cfg": mode_cfg(a["mode"]) if a["mode"] else None,
@@ -543,7 +573,18 @@ def api_leave(code):
             b = con.execute("SELECT * FROM bidders WHERE token=? AND room_code=?",
                             (body.get("token"), code)).fetchone()
             if b:
+                was_owner = (b["user_id"] is not None
+                             and b["user_id"] == room_owner_id(con, code))
                 con.execute("DELETE FROM bidders WHERE id=?", (b["id"],))
+                if was_owner:
+                    # hand ownership to the earliest remaining bidder
+                    nxt = con.execute(
+                        "SELECT user_id FROM bidders WHERE room_code=?"
+                        " AND user_id IS NOT NULL ORDER BY joined_at LIMIT 1",
+                        (code,)).fetchone()
+                    if nxt:
+                        con.execute("UPDATE rooms SET owner_user_id=? WHERE code=?",
+                                    (nxt["user_id"], code))
                 emit(con, code, "team_left", {"name": b["name"], "team_id": b["team_id"]})
                 con.commit()
             return jsonify({"ok": True})
@@ -579,6 +620,17 @@ def api_start(code):
                             (body.get("token"), code)).fetchone()
             if not b:
                 return jsonify({"ok": False, "error": "Join first."}), 401
+            # only the room owner can start the match
+            if b["user_id"] != room_owner_id(con, code):
+                return jsonify({"ok": False,
+                                "error": "Only the room owner can start the match."}), 403
+            # need a minimum number of bidders in the lobby
+            n = con.execute("SELECT COUNT(*) AS c FROM bidders WHERE room_code=?",
+                            (code,)).fetchone()["c"]
+            if n < MIN_BIDDERS:
+                return jsonify({"ok": False,
+                                "error": f"Need at least {MIN_BIDDERS} bidders to start"
+                                         f" — {n} joined so far."}), 400
             now = time.time()
             con.execute("UPDATE auction SET mode=?, status='lobby', host_token=?"
                         " WHERE room_code=?", (mode, b["token"], code))

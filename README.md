@@ -54,23 +54,26 @@ Railway and Fly.io work too — same build/start commands.
 ## How it plays
 
 1. **Log in or register** (name + password) on the first page.
-2. **Create a room** (you get a 6-letter code) or **join** with a code.
-   Share the code with friends.
-2. Enter your name, pick your favourite IPL team (taken teams are locked —
-   one bidder per team).
-3. Any joined bidder starts an auction mode — they become the **host**.
-4. Players come up **set by set**, exactly like the real IPL auction:
+2. **Create a room** (you get a 6-letter code — you become the room owner)
+   or **join** with a code. Share the code with friends.
+3. Enter your name, pick your favourite IPL team (taken teams are locked —
+   one bidder per team). Everyone waits in the **lobby**, which shows every
+   team with its bidder's name.
+4. **Only the room owner** can start the match, and only once **at least
+   5 bidders** have joined the lobby.
+5. The owner picks an auction mode and becomes the **host**.
+6. Players come up **set by set**, exactly like the real IPL auction:
    Marquee Set 1 → Marquee Set 2 → Capped Batters → All-Rounders →
    Wicket-Keepers → Fast Bowlers → Spinners → Uncapped Stars.
-4. Hit **BID** (or press `B`) — bids rise by official IPL increments
+7. Hit **BID** (or press `B`) — bids rise by official IPL increments
    (₹5L under ₹1 Cr, ₹10L to ₹2 Cr, ₹20L to ₹5 Cr, ₹25L above).
-5. The 🎙️ **female auctioneer voice** announces every bid
+8. The 🎙️ **female auctioneer voice** announces every bid
    ("*Mumbai Indians bid 2 crore 20 lakh for Rishabh Pant*") and
    congratulates the winning team on every sale.
-6. The hammer falls automatically when the timer runs out, or the host
+9. The hammer falls automatically when the timer runs out, or the host
    can hammer / mark unsold / skip ahead.
-7. Track everything in the **Upcoming / Sold / Unsold** tabs and watch
-   every team's purse and squad build in real time.
+10. Track everything in the **Upcoming / Sold / Unsold** tabs and watch
+    every team's purse and squad build in real time.
 
 ### Squad rules (enforced by the backend)
 
