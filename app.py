@@ -26,7 +26,7 @@ import urllib.error
 import urllib.request
 from email.message import EmailMessage
 
-from data import TEAMS, MODES, PLAYERS
+from data import TEAMS, MODES, PLAYERS, PLAYER_ERA
 
 BASE = Path(__file__).resolve().parent
 DB_PATH = BASE / "auction.db"
@@ -80,7 +80,7 @@ def init_db():
         id INTEGER PRIMARY KEY, room_code TEXT NOT NULL,
         name TEXT NOT NULL, country TEXT NOT NULL,
         role TEXT NOT NULL, base_lakh INTEGER NOT NULL, set_name TEXT NOT NULL,
-        order_index INTEGER NOT NULL, img TEXT,
+        order_index INTEGER NOT NULL, img TEXT, era TEXT,
         status TEXT NOT NULL DEFAULT 'upcoming',
         sold_price_lakh INTEGER, sold_team_id INTEGER, sold_bidder_id INTEGER)""")
     c.execute("""CREATE TABLE IF NOT EXISTS auction(
@@ -131,6 +131,10 @@ def init_db():
         c.execute("ALTER TABLE bidders ADD COLUMN user_id INTEGER")
     c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_bidders_room_user"
               " ON bidders(room_code, user_id)")
+    # players.era added with era modes; migrate old DBs
+    pcols = [r["name"] for r in c.execute("PRAGMA table_info(players)").fetchall()]
+    if "era" not in pcols:
+        c.execute("ALTER TABLE players ADD COLUMN era TEXT")
     con.commit()
     con.close()
 
@@ -167,12 +171,26 @@ def new_session(con, user_id):
     return token
 
 
+def player_photo_url(name):
+    """Local photo for a player, or None.
+
+    Photos live in static/players/<slug>.jpg (added for all players) and are
+    served at /players/<slug>.jpg by the catch-all static route. A missing
+    file means the frontend falls back to the player's initials, as before.
+    """
+    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+    if (STATIC_DIR / "players" / f"{slug}.jpg").exists():
+        return f"/players/{slug}.jpg"
+    return None
+
+
 def seed_room_players(con, code):
     for i, (name, country, role, base, set_name) in enumerate(PLAYERS):
         con.execute(
-            "INSERT INTO players(room_code,name,country,role,base_lakh,set_name,order_index)"
-            " VALUES (?,?,?,?,?,?,?)",
-            (code, name, country, role, base, set_name, i),
+            "INSERT INTO players(room_code,name,country,role,base_lakh,set_name,order_index,img,era)"
+            " VALUES (?,?,?,?,?,?,?,?,?)",
+            (code, name, country, role, base, set_name, i,
+             player_photo_url(name), PLAYER_ERA.get(name)),
         )
 
 
@@ -230,8 +248,49 @@ def team_squad(con, code, team_id, mode):
     }
 
 
+def leaderboard(con, code, mode):
+    """Rank bidder teams two ways, from their sold squads only.
+
+    spent board: most money spent first (the big spenders).
+    value board: teams that built a full squad for the least money first
+    (full squads, lowest total spent first); incomplete squads follow,
+    most players first, then lowest spent. avg_lakh is spent per player.
+    """
+    cfg = mode_cfg(mode)
+    size = cfg["squad_size"]
+    entries = []
+    for tid, (short, name, color, tcolor) in enumerate(TEAMS):
+        b = con.execute("SELECT * FROM bidders WHERE room_code=? AND team_id=?",
+                        (code, tid)).fetchone()
+        if not b:
+            continue
+        sq = team_squad(con, code, tid, mode)
+        entries.append({
+            "team_id": tid, "short": short, "name": name, "color": color,
+            "bidder": b["name"], "count": sq["count"], "overseas": sq["overseas"],
+            "spent_lakh": sq["spent_lakh"], "remaining_lakh": sq["remaining_lakh"],
+            "avg_lakh": round(sq["spent_lakh"] / sq["count"], 1) if sq["count"] else 0,
+            "full": sq["count"] >= size, "squad_size": size,
+        })
+    spent_board = sorted(entries, key=lambda e: (-e["spent_lakh"], -e["count"]))
+    value_board = sorted(entries, key=lambda e: (
+        0 if e["full"] else 1,
+        e["spent_lakh"] if e["full"] else 0,
+        0 if e["full"] else -e["count"],
+        e["spent_lakh"]))
+    return {"spent": spent_board, "value": value_board}
+
+
 def _next_upcoming(con, code, mode):
-    sets = mode_cfg(mode)["sets"]
+    cfg = mode_cfg(mode)
+    if "era" in cfg:
+        # Era modes ignore set_name: every player whose debut era matches,
+        # including classic-pool players assigned to that era.
+        return con.execute(
+            "SELECT * FROM players WHERE room_code=? AND status='upcoming'"
+            " AND era=? ORDER BY order_index LIMIT 1",
+            (code, cfg["era"])).fetchone()
+    sets = cfg["sets"]
     placeholders = ",".join("?" for _ in sets)
     return con.execute(
         f"SELECT * FROM players WHERE room_code=? AND status='upcoming'"
@@ -322,13 +381,13 @@ def can_bid(con, code, a, bidder, amount):
     overseas_after = squad["overseas"] + (1 if p["country"] != "India" else 0)
     if overseas_after > mode["max_overseas"]:
         return False, f"Overseas limit reached (max {mode['max_overseas']})."
+    indians_after = squad["indians"] + (1 if p["country"] == "India" else 0)
+    if indians_after > mode["squad_size"] - mode["min_overseas"]:
+        return False, f"Indian limit reached (max {mode['squad_size'] - mode['min_overseas']})."
     slots_left_after = mode["squad_size"] - (squad["count"] + 1)
     need_overseas = max(0, mode["min_overseas"] - overseas_after)
     if slots_left_after < need_overseas:
         return False, f"You still need {need_overseas} more overseas player(s)."
-    indians_after = squad["indians"] + (1 if p["country"] == "India" else 0)
-    if indians_after > mode["squad_size"] - mode["min_overseas"]:
-        return False, "You must leave room for overseas picks."
     if squad["remaining_lakh"] < amount:
         return False, "Not enough purse left."
     if squad["remaining_lakh"] - amount < MIN_BASE_LAKH * slots_left_after:
@@ -633,12 +692,31 @@ def api_state(code):
                 })
             sets = []
             if a["mode"]:
-                for s in mode_cfg(a["mode"])["sets"]:
-                    rows = con.execute(
-                        "SELECT * FROM players WHERE room_code=? AND set_name=?"
-                        " ORDER BY order_index", (code, s)
-                    ).fetchall()
-                    sets.append({"name": s, "players": [with_stats(r) for r in rows]})
+                cfg = mode_cfg(a["mode"])
+                if "era" in cfg or cfg.get("group_by_role"):
+                    for role, label in [("BAT", "Batters"), ("AR", "All-Rounders"),
+                                        ("WK", "Wicket-Keepers"), ("BOWL", "Fast Bowlers"),
+                                        ("SPIN", "Spinners")]:
+                        if "era" in cfg:
+                            rows = con.execute(
+                                "SELECT * FROM players WHERE room_code=? AND era=? AND role=?"
+                                " ORDER BY order_index", (code, cfg["era"], role)
+                            ).fetchall()
+                        else:
+                            rows = con.execute(
+                                "SELECT * FROM players WHERE room_code=? AND set_name=? AND role=?"
+                                " ORDER BY order_index", (code, cfg["sets"][0], role)
+                            ).fetchall()
+                        if rows:
+                            sets.append({"name": label,
+                                         "players": [with_stats(r) for r in rows]})
+                else:
+                    for s in cfg["sets"]:
+                        rows = con.execute(
+                            "SELECT * FROM players WHERE room_code=? AND set_name=?"
+                            " ORDER BY order_index", (code, s)
+                        ).fetchall()
+                        sets.append({"name": s, "players": [with_stats(r) for r in rows]})
             cur = None
             if a["current_player_id"]:
                 p = con.execute("SELECT * FROM players WHERE id=? AND room_code=?",
@@ -691,6 +769,7 @@ def api_state(code):
                             "result_until": a["result_until"]},
                 "me": me,
                 "teams": teams,
+                "leaderboard": leaderboard(con, code, a["mode"]) if a["mode"] else None,
                 "bidders": bidders,
                 "sets": sets,
                 "current": cur,

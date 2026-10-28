@@ -70,7 +70,7 @@ function avatarHTML(p, cls) {
 }
 const ROLE = { BAT:"Batter", AR:"All-Rounder", WK:"Wicket-Keeper", BOWL:"Fast Bowler", SPIN:"Spinner" };
 const FLAG = { "India":"🇮🇳","England":"🏴󐁧󐁢󐁥󐁮󐁧󐁿","Australia":"🇦🇺","South Africa":"🇿🇦","New Zealand":"🇳🇿",
-  "West Indies":"🏝️","Afghanistan":"🇦🇫","Sri Lanka":"🇱🇰","Bangladesh":"🇧🇩","Zimbabwe":"🇿🇼" };
+  "West Indies":"🏝️","Afghanistan":"🇦🇫","Sri Lanka":"🇱🇰","Bangladesh":"🇧🇩","Zimbabwe":"🇿🇼","Pakistan":"🇵🇰","Ireland":"🇮🇪","Netherlands":"🇳🇱","Nepal":"🇳🇵","Kenya":"🇰🇪","Malaysia":"🇲🇾" };
 
 /* ---------------- voice (female auctioneer) ---------------- */
 function pickFemaleVoice() {
@@ -187,7 +187,7 @@ function render() {
   if (!live) { renderLobby(); return; }
   $("modeBadge").textContent = a.mode_cfg.label;
   $("modeBadge").classList.remove("hidden");
-  renderStage(); renderSide(); renderLists(); renderOverlay();
+  renderStage(); renderSide(); renderLists(); renderLeaderboard(); renderOverlay();
 }
 
 function renderLobby() {
@@ -258,7 +258,7 @@ function renderStage() {
   if (a.status === "done") {
     $("setTag").textContent = "Auction complete";
     $("playerCard").innerHTML = `<div class="p-info"><h2>🎉 That's the auction!</h2>
-      <p class="p-meta">All players have gone under the hammer. Check the Sold tab for final squads.</p></div>`;
+      <p class="p-meta">All players have gone under the hammer. Check the Leaderboard tab for final standings, and Sold for final squads.</p></div>`;
     $("currentBid").innerHTML = "";
     $("bidBtn").disabled = true; $("bidBtn").textContent = "Auction Over";
     $("timerText").textContent = "";
@@ -391,6 +391,24 @@ function renderLists() {
     un.forEach(p => { g.innerHTML += playerRow(p); });
     np.appendChild(g);
   }
+}
+
+function renderLeaderboard() {
+  const el = $("tab-leaderboard"); if (!el) return;
+  const lb = S.leaderboard;
+  if (!lb || (!lb.spent.length && !lb.value.length)) {
+    el.innerHTML = `<p style="color:var(--mut)">No sales yet — the leaderboard fills in as teams buy players.</p>`;
+    return;
+  }
+  const board = (title, note, rows) => {
+    if (!rows.length) return `<h3 class="set-head">${esc(title)}</h3><p style="color:var(--mut)">No teams yet.</p>`;
+    const rs = rows.map((e, i) => `<div class="prow"><div><div class="nm">#${i + 1} ${esc(e.name)} <span style="color:var(--mut)">· ${esc(e.bidder)}</span></div>
+      <div class="rl">${e.count}/${e.squad_size} players · ✈️${e.overseas} · avg ${fmtLakh(Math.round(e.avg_lakh))} per player${e.full ? " · ✅ full squad" : ""}</div></div>
+      <div style="text-align:right"><div class="nm">${fmtLakh(e.spent_lakh)}</div><div class="rl">purse left ${fmtLakh(e.remaining_lakh)}</div></div></div>`).join("");
+    return `<h3 class="set-head">${esc(title)}</h3><p style="color:var(--mut);font-size:13px">${esc(note)}</p><div class="plist">${rs}</div>`;
+  };
+  el.innerHTML = board("💰 Money spent", "Biggest spenders first.", lb.spent)
+    + board("🏆 Best value — full squad for least money", "Full squads ranked by lowest total spent first; incomplete squads follow, most players first.", lb.value);
 }
 
 function renderOverlay() {
@@ -561,7 +579,7 @@ $("voiceToggle").onclick = () => {
 document.querySelectorAll(".lists-card .tab").forEach(t => t.onclick = () => {
   document.querySelectorAll(".lists-card .tab").forEach(x => x.classList.remove("active"));
   t.classList.add("active"); activeTab = t.dataset.tab;
-  ["upcoming", "sold", "unsold"].forEach(k => $("tab-" + k).classList.toggle("hidden", k !== activeTab));
+  ["upcoming", "sold", "unsold", "leaderboard"].forEach(k => $("tab-" + k).classList.toggle("hidden", k !== activeTab));
 });
 
 showView("auth");
