@@ -116,6 +116,7 @@ def init_db():
         created_at REAL NOT NULL)""")
     c.execute("CREATE INDEX IF NOT EXISTS idx_events_room ON events(room_code, seq)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_players_room ON players(room_code, status)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_players_room_set ON players(room_code, set_name, order_index)")
     c.execute("""CREATE TABLE IF NOT EXISTS otp_codes(
         id INTEGER PRIMARY KEY, email TEXT NOT NULL, code_hash TEXT NOT NULL,
         created_at REAL NOT NULL, expires_at REAL NOT NULL,
@@ -248,7 +249,38 @@ def team_squad(con, code, team_id, mode):
     }
 
 
-def leaderboard(con, code, mode):
+def all_squads(con, code, mode):
+    """All teams' sold squads from ONE query (state used to call team_squad
+    once per team and then again inside leaderboard, which made every poll
+    scan the sold players 20+ times and held the global lock while doing
+    it — the main reason bids felt slow when several bidders were polling
+    at once). Returns {team_id: squad-dict} in team_squad's shape."""
+    purse = mode_cfg(mode)["purse_cr"] * 100
+    rows = con.execute(
+        "SELECT * FROM players WHERE room_code=? AND status='sold'"
+        " ORDER BY order_index", (code,)).fetchall()
+    squads = {}
+    for tid in range(len(TEAMS)):
+        squads[tid] = {"count": 0, "overseas": 0, "indians": 0,
+                       "spent_lakh": 0, "remaining_lakh": purse, "players": []}
+    for r in rows:
+        tid = r["sold_team_id"]
+        if tid is None or tid not in squads:
+            continue
+        sq = squads[tid]
+        sq["count"] += 1
+        if r["country"] != "India":
+            sq["overseas"] += 1
+        else:
+            sq["indians"] += 1
+        sq["spent_lakh"] += r["sold_price_lakh"] or 0
+        sq["players"].append(with_stats(r))
+    for sq in squads.values():
+        sq["remaining_lakh"] = purse - sq["spent_lakh"]
+    return squads
+
+
+def leaderboard(con, code, mode, squads=None):
     """Rank bidder teams two ways, from their sold squads only.
 
     spent board: most money spent first (the big spenders).
@@ -258,13 +290,15 @@ def leaderboard(con, code, mode):
     """
     cfg = mode_cfg(mode)
     size = cfg["squad_size"]
+    if squads is None:
+        squads = all_squads(con, code, mode)
     entries = []
     for tid, (short, name, color, tcolor) in enumerate(TEAMS):
         b = con.execute("SELECT * FROM bidders WHERE room_code=? AND team_id=?",
                         (code, tid)).fetchone()
         if not b:
             continue
-        sq = team_squad(con, code, tid, mode)
+        sq = squads[tid]
         entries.append({
             "team_id": tid, "short": short, "name": name, "color": color,
             "bidder": b["name"], "count": sq["count"], "overseas": sq["overseas"],
@@ -680,11 +714,12 @@ def api_state(code):
                 if r:
                     me = {"id": r["id"], "name": r["name"], "team_id": r["team_id"],
                           "is_host": (a["host_token"] == token)}
+            squads = all_squads(con, code, a["mode"]) if a["mode"] else None
             teams = []
             for tid, (short, name, color, tcolor) in enumerate(TEAMS):
                 b = con.execute("SELECT * FROM bidders WHERE room_code=? AND team_id=?",
                                 (code, tid)).fetchone()
-                sq = team_squad(con, code, tid, a["mode"]) if a["mode"] else None
+                sq = squads[tid] if squads is not None else None
                 teams.append({
                     "id": tid, "short": short, "name": name, "color": color,
                     "text_color": tcolor, "occupied_by": b["name"] if b else None,
@@ -769,7 +804,7 @@ def api_state(code):
                             "result_until": a["result_until"]},
                 "me": me,
                 "teams": teams,
-                "leaderboard": leaderboard(con, code, a["mode"]) if a["mode"] else None,
+                "leaderboard": leaderboard(con, code, a["mode"], squads) if a["mode"] else None,
                 "bidders": bidders,
                 "sets": sets,
                 "current": cur,
@@ -948,7 +983,9 @@ def api_bid(code):
                 "bidder_name": bidder["name"], "amount_lakh": amount,
             })
             con.commit()
-            return jsonify({"ok": True, "amount_lakh": amount})
+            return jsonify({"ok": True, "amount_lakh": amount,
+                            "next_bid_lakh": next_bid_amount(amount, p["base_lakh"]),
+                            "deadline": deadline})
         finally:
             con.close()
 

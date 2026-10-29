@@ -20,6 +20,8 @@ const store = {
 const R = (path) => `/api/r/${store.roomCode}${path}`;
 
 let S = null;              // latest full state
+let lastStageKey = "", lastListsKey = "", lastLbKey = "", lastSideKey = "";
+let bidInFlight = false;
 let lastSeq = 0;           // events consumed
 let lastSpokenSeq = 0;     // events voiced
 let voiceOn = true;
@@ -34,6 +36,13 @@ async function api(path, method = "GET", body) {
     body: body ? JSON.stringify(body) : undefined,
   });
   return r.json();
+}
+function nextBidAmount(cur, base) {
+  if (cur == null) return base;
+  if (cur < 100) return cur + 5;
+  if (cur < 200) return cur + 10;
+  if (cur <= 500) return cur + 20;
+  return cur + 25;
 }
 function fmtLakh(l) {
   if (l == null) return "—";
@@ -132,7 +141,7 @@ async function poll() {
     }
   } catch (e) { /* retry next tick */ }
 }
-setInterval(poll, 1500);
+setInterval(poll, 1000);
 setInterval(updateTimer, 400);
 
 /* ---------------- views ---------------- */
@@ -255,6 +264,20 @@ function renderLobby() {
 function renderStage() {
   const a = S.auction, cur = S.current;
   const host = S.me && S.me.is_host;
+  const stageKey = [a.status, cur && cur.player.id, cur && cur.bid_lakh,
+    cur && cur.team && cur.team.id, cur && cur.bidder_name, cur && cur.next_bid_lakh,
+    S.me && S.me.team_id, host].join("|");
+  const stageChanged = stageKey !== lastStageKey;
+  lastStageKey = stageKey;
+  if (!stageChanged && a.status !== "done" && cur) {
+    // Stage is identical to last poll: only the button state/timer can move.
+    const mine = S.me && cur && cur.team && cur.team.id === S.me.team_id;
+    $("bidBtn").disabled = bidInFlight || !S.me || !cur || mine || a.status !== "bidding";
+    if (!bidInFlight) $("bidBtn").textContent = !S.me ? "Join to bid" : mine ? "You hold the bid" : `Bid ${fmtLakh(cur.next_bid_lakh)}`;
+    $("hostControls").classList.toggle("hidden", !host || (a.status !== "bidding" && a.status !== "result"));
+    updateTimer();
+    return;
+  }
   if (a.status === "done") {
     $("setTag").textContent = "Auction complete";
     $("playerCard").innerHTML = `<div class="p-info"><h2>🎉 That's the auction!</h2>
@@ -310,6 +333,9 @@ function teamColor(id) { return S.teams[id].color; }
 function teamText(id) { return S.teams[id].text_color; }
 
 function renderSide() {
+  const sideKey = S.teams.map(t => [t.occupied_by, t.squad && t.squad.count, t.squad && t.squad.overseas, t.squad && t.squad.remaining_lakh, t.squad && t.squad.players.map(pp => pp.id + ":" + pp.sold_price_lakh).join(",")].join("/")).join(";");
+  if (sideKey === lastSideKey) return;
+  lastSideKey = sideKey;
   const me = S.me;
   const ts = $("teamsStrip"); ts.innerHTML = "";
   S.teams.forEach(t => {
@@ -358,6 +384,9 @@ function playerRow(p, extra = "") {
 
 function renderLists() {
   const sets = S.sets;
+  const listsKey = sets.map(x => x.players.map(pp => [pp.id, pp.status, pp.sold_team_id, pp.sold_price_lakh].join(":")).join(",")).join(";");
+  if (listsKey === lastListsKey) return;
+  lastListsKey = listsKey;
   // upcoming grouped set-by-set
   const up = $("tab-upcoming"); up.innerHTML = "";
   sets.forEach(s => {
@@ -367,7 +396,7 @@ function renderLists() {
     h.textContent = `${s.name} (${n} to go)`;
     up.appendChild(h);
     const g = document.createElement("div"); g.className = "plist";
-    s.players.forEach(p => { g.innerHTML += playerRow(p); });
+    g.innerHTML = s.players.map(p => playerRow(p)).join("");
     up.appendChild(g);
   });
   // sold
@@ -378,7 +407,7 @@ function renderLists() {
   const sp = $("tab-sold"); sp.innerHTML = sold.length ? "" : `<p style="color:var(--mut)">No players sold yet.</p>`;
   if (sold.length) {
     const g = document.createElement("div"); g.className = "plist";
-    sold.forEach((p, i) => { g.innerHTML += playerRow(p, ` · #${i + 1}`); });
+    g.innerHTML = sold.map((p, i) => playerRow(p, ` · #${i + 1}`)).join("");
     sp.appendChild(g);
   }
   // unsold
@@ -388,13 +417,16 @@ function renderLists() {
   const np = $("tab-unsold"); np.innerHTML = un.length ? "" : `<p style="color:var(--mut)">No unsold players. Yet.</p>`;
   if (un.length) {
     const g = document.createElement("div"); g.className = "plist";
-    un.forEach(p => { g.innerHTML += playerRow(p); });
+    g.innerHTML = un.map(p => playerRow(p)).join("");
     np.appendChild(g);
   }
 }
 
 function renderLeaderboard() {
   const el = $("tab-leaderboard"); if (!el) return;
+  const lbKey = S.leaderboard ? JSON.stringify(S.leaderboard) : "";
+  if (lbKey === lastLbKey) return;
+  lastLbKey = lbKey;
   const lb = S.leaderboard;
   if (!lb || (!lb.spent.length && !lb.value.length)) {
     el.innerHTML = `<p style="color:var(--mut)">No sales yet — the leaderboard fills in as teams buy players.</p>`;
@@ -556,8 +588,39 @@ $("joinBtn").onclick = async () => {
   else $("joinMsg").textContent = r.error || "Could not join.";
 };
 $("bidBtn").onclick = async () => {
-  const r = await api(R("/bid"), "POST", { token: store.token });
-  if (!r.ok) { $("bidMsg").textContent = r.error || "Bid failed."; setTimeout(() => $("bidMsg").textContent = "", 3500); }
+  // One click = one bid: ignore repeats while a bid is in flight, disable
+  // the button at once, and show the bid as taken immediately (optimistic)
+  // instead of waiting for the next poll to redraw it.
+  if (bidInFlight || !S || !S.current || S.auction.status !== "bidding") return;
+  const cur = S.current, me = S.me;
+  if (!me || (cur.team && cur.team.id === me.team_id)) return;
+  bidInFlight = true;
+  const btn = $("bidBtn");
+  btn.disabled = true; btn.textContent = "Bidding…";
+  const amount = cur.next_bid_lakh;
+  const prev = { bid: cur.bid_lakh, team: cur.team, bidder: cur.bidder_name, next: cur.next_bid_lakh };
+  cur.bid_lakh = amount;
+  cur.team = { id: me.team_id, short: S.teams[me.team_id].short, name: S.teams[me.team_id].name };
+  cur.bidder_name = me.name;
+  cur.next_bid_lakh = nextBidAmount(amount, cur.player.base_lakh);
+  lastStageKey = ""; renderStage();
+  try {
+    const r = await api(R("/bid"), "POST", { token: store.token });
+    if (!r.ok) {
+      // Revert the optimistic bid; the immediate poll below restores truth.
+      cur.bid_lakh = prev.bid; cur.team = prev.team; cur.bidder_name = prev.bidder; cur.next_bid_lakh = prev.next;
+      $("bidMsg").textContent = r.error || "Bid failed.";
+      setTimeout(() => $("bidMsg").textContent = "", 3500);
+    }
+  } catch (e) {
+    cur.bid_lakh = prev.bid; cur.team = prev.team; cur.bidder_name = prev.bidder; cur.next_bid_lakh = prev.next;
+    $("bidMsg").textContent = "Bid failed — check your connection.";
+    setTimeout(() => $("bidMsg").textContent = "", 3500);
+  } finally {
+    bidInFlight = false;
+    lastStageKey = "";
+    poll(); // refresh at once, don't wait for the next poll tick
+  }
 };
 document.addEventListener("keydown", (e) => {
   if ((e.key === "b" || e.key === "B") && !$("view-auction").classList.contains("hidden")
