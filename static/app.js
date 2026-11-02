@@ -93,20 +93,26 @@ if ("speechSynthesis" in window) {
   pickFemaleVoice();
   speechSynthesis.onvoiceschanged = pickFemaleVoice;
 }
-function speak(text) {
+function speak(text, interruptible) {
   if (!voiceOn || !("speechSynthesis" in window)) return;
-  speechSynthesis.cancel();
+  // Bids arrive fast while teams bid, so a new bid interrupts the last bid
+  // announcement to keep up. Everything else (sold congratulations, unsold,
+  // next player, auction start) queues instead of cancelling — otherwise the
+  // 1-second result banner would cut the congratulations off after 1 second.
+  if (interruptible) speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   if (femaleVoice) u.voice = femaleVoice;
   u.rate = 1.02; u.pitch = 1.05;
+  u.onstart = () => {
+    $("captionBar").classList.remove("hidden");
+    $("captionText").textContent = text;
+  };
   speechSynthesis.speak(u);
-  $("captionBar").classList.remove("hidden");
-  $("captionText").textContent = text;
 }
 function handleEvent(e) {
   const d = e.data;
   if (e.type === "bid") {
-    speak(`${d.team_name} bid ${speakLakh(d.amount_lakh)} for ${d.player_name}.`);
+    speak(`${d.team_name} bid ${speakLakh(d.amount_lakh)} for ${d.player_name}.`, true);
   } else if (e.type === "sold") {
     speak(`Congratulations ${d.team_name}! ${d.player_name} sold for ${speakLakh(d.price_lakh)}.`);
   } else if (e.type === "unsold") {

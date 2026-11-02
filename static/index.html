@@ -3,12 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IPL Auction Arena</title>
+<title>IPL Auction Arena — Live Cricket Auction Game</title>
+<meta name="description" content="IPL Auction Arena: a live, fan-made cricket auction game. Create a room, pick a franchise, and outbid your friends for the 2025–26 player pool.">
+<meta name="theme-color" content="#070a14">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%8F%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <header class="topbar">
-  <div class="brand">🏏 <span>Auction Arena</span></div>
+  <div class="brand"><span class="brand-mark">🏏</span> <span>Auction Arena</span> <span class="brand-sub">IPL 2025–26</span></div>
   <div class="top-right">
     <div id="userBadge" class="mode-badge hidden"></div>
     <div id="roomBadge" class="mode-badge hidden"></div>
@@ -22,53 +28,74 @@
 
 <!-- ============ AUTH ============ -->
 <main id="view-auth" class="view">
-  <section class="hero">
-    <h1>IPL Auction Arena</h1>
-    <p>Log in or create your account with your Gmail.</p>
+  <section class="hero hero-split">
+    <div class="hero-copy">
+      <p class="eyebrow">Fan-made live auction game</p>
+      <h1>IPL Auction<br>Arena</h1>
+      <p class="hero-lede">Run your own IPL-style auction. Pick a franchise, manage a ₹120&nbsp;Cr purse, and outbid your friends — player by player, under the hammer.</p>
+      <div class="hero-stats">
+        <div class="stat"><b>310</b><span>players</span></div>
+        <div class="stat"><b>10</b><span>franchises</span></div>
+        <div class="stat"><b>₹120 Cr</b><span>purse</span></div>
+      </div>
+    </div>
+    <div class="hero-panel">
+      <h2>Welcome back</h2>
+      <p class="panel-sub">Log in or create your account with your Gmail.</p>
+      <div class="tabs" style="margin-bottom:16px">
+        <button class="tab active" data-authtab="login">Login</button>
+        <button class="tab" data-authtab="register">Register</button>
+      </div>
+      <div id="pane-login">
+        <div id="loginStep1">
+          <label class="field-label" for="loginEmail">Gmail address</label>
+          <input id="loginEmail" maxlength="80" placeholder="you@gmail.com" autocomplete="email" inputmode="email">
+          <div id="loginMsg" class="msg"></div>
+          <button id="loginSendBtn" class="btn primary big">Send Code</button>
+        </div>
+        <div id="loginStep2" class="hidden">
+          <p style="color:var(--mut);font-size:14px">We sent a 6-digit code to <b id="loginEmailEcho"></b>.</p>
+          <label class="field-label" for="loginCode">6-digit code</label>
+          <input id="loginCode" maxlength="6" placeholder="Enter the 6-digit code" inputmode="numeric">
+          <div id="loginMsg2" class="msg"></div>
+          <button id="loginVerifyBtn" class="btn primary big">Verify &amp; Log In</button>
+          <div style="margin-top:10px"><a href="#" id="loginBack" style="color:var(--mut);font-size:13px">← use a different email</a></div>
+        </div>
+      </div>
+      <div id="pane-register" class="hidden">
+        <div id="regStep1">
+          <label class="field-label" for="regName">Your name</label>
+          <input id="regName" maxlength="30" placeholder="Your name" autocomplete="username">
+          <label class="field-label" for="regEmail">Gmail address</label>
+          <input id="regEmail" maxlength="80" placeholder="you@gmail.com" autocomplete="email" inputmode="email">
+          <div id="regMsg" class="msg"></div>
+          <button id="regSendBtn" class="btn primary big">Send Code</button>
+        </div>
+        <div id="regStep2" class="hidden">
+          <p style="color:var(--mut);font-size:14px">We sent a 6-digit code to <b id="regEmailEcho"></b>.</p>
+          <label class="field-label" for="regCode">6-digit code</label>
+          <input id="regCode" maxlength="6" placeholder="Enter the 6-digit code" inputmode="numeric">
+          <div id="regMsg2" class="msg"></div>
+          <button id="regVerifyBtn" class="btn primary big">Verify &amp; Create Account</button>
+          <div style="margin-top:10px"><a href="#" id="regBack" style="color:var(--mut);font-size:13px">← use a different email</a></div>
+        </div>
+      </div>
+    </div>
   </section>
 
-  <section class="card join-card">
-    <div class="tabs" style="margin-bottom:16px">
-      <button class="tab active" data-authtab="login">Login</button>
-      <button class="tab" data-authtab="register">Register</button>
-    </div>
-    <div id="pane-login">
-      <div id="loginStep1">
-        <input id="loginEmail" maxlength="80" placeholder="Your Gmail address" autocomplete="email" inputmode="email">
-        <div id="loginMsg" class="msg"></div>
-        <button id="loginSendBtn" class="btn primary big">Send Code</button>
-      </div>
-      <div id="loginStep2" class="hidden">
-        <p style="color:var(--mut);font-size:14px">We sent a 6-digit code to <b id="loginEmailEcho"></b>.</p>
-        <input id="loginCode" maxlength="6" placeholder="Enter the 6-digit code" inputmode="numeric">
-        <div id="loginMsg2" class="msg"></div>
-        <button id="loginVerifyBtn" class="btn primary big">Verify & Log In</button>
-        <div style="margin-top:10px"><a href="#" id="loginBack" style="color:var(--mut);font-size:13px">← use a different email</a></div>
-      </div>
-    </div>
-    <div id="pane-register" class="hidden">
-      <div id="regStep1">
-        <input id="regName" maxlength="30" placeholder="Your name" autocomplete="username">
-        <input id="regEmail" maxlength="80" placeholder="Your Gmail address" autocomplete="email" inputmode="email">
-        <div id="regMsg" class="msg"></div>
-        <button id="regSendBtn" class="btn primary big">Send Code</button>
-      </div>
-      <div id="regStep2" class="hidden">
-        <p style="color:var(--mut);font-size:14px">We sent a 6-digit code to <b id="regEmailEcho"></b>.</p>
-        <input id="regCode" maxlength="6" placeholder="Enter the 6-digit code" inputmode="numeric">
-        <div id="regMsg2" class="msg"></div>
-        <button id="regVerifyBtn" class="btn primary big">Verify & Create Account</button>
-        <div style="margin-top:10px"><a href="#" id="regBack" style="color:var(--mut);font-size:13px">← use a different email</a></div>
-      </div>
-    </div>
+  <section class="feature-row">
+    <div class="feature"><span class="feature-icon">⚡</span><h3>Live bidding</h3><p>Real-time bids, timers and the hammer — just like auction night.</p></div>
+    <div class="feature"><span class="feature-icon">🏏</span><h3>Real 2025–26 squads</h3><p>Marquee sets first, then capped and uncapped players by role.</p></div>
+    <div class="feature"><span class="feature-icon">🏆</span><h3>Leaderboard</h3><p>Biggest spenders and best-value full squads, ranked live.</p></div>
   </section>
 </main>
 
 <!-- ============ ROOMS ============ -->
 <main id="view-rooms" class="view hidden">
   <section class="hero">
+    <p class="eyebrow">Your auction, your room</p>
     <h1>IPL Auction Arena</h1>
-    <p>Create a room, share the code, and bid against your friends.</p>
+    <p class="hero-lede">Create a room, share the code, and bid against your friends.</p>
   </section>
 
   <section class="card account-bar">
@@ -76,29 +103,35 @@
     <button id="roomsLogoutBtn" class="btn small ghost">🚪 Log out</button>
   </section>
 
-  <section class="card join-card">
-    <h2>🎪 Create a room</h2>
-    <p style="color:var(--mut);font-size:14px">Start a new room and invite friends with your room code.</p>
-    <input id="createNameInput" maxlength="30" placeholder="Your name">
-    <div id="createMsg" class="msg"></div>
-    <button id="createRoomBtn" class="btn primary big">Create Room</button>
-  </section>
+  <div class="two-col">
+    <section class="card join-card">
+      <h2>🎪 Create a room</h2>
+      <p style="color:var(--mut);font-size:14px">Start a new room and invite friends with your room code.</p>
+      <label class="field-label" for="createNameInput">Your name</label>
+      <input id="createNameInput" maxlength="30" placeholder="Your name">
+      <div id="createMsg" class="msg"></div>
+      <button id="createRoomBtn" class="btn primary big">Create Room</button>
+    </section>
 
-  <section class="card join-card">
-    <h2>🔑 Join a room</h2>
-    <p style="color:var(--mut);font-size:14px">Got a room code from a friend? Enter it below.</p>
-    <input id="joinCodeInput" maxlength="6" placeholder="Room code (e.g. XK7Q2M)" style="text-transform:uppercase">
-    <input id="joinNameInput" maxlength="30" placeholder="Your name">
-    <div id="joinRoomMsg" class="msg"></div>
-    <button id="joinRoomBtn" class="btn primary big">Join Room</button>
-  </section>
+    <section class="card join-card">
+      <h2>🔑 Join a room</h2>
+      <p style="color:var(--mut);font-size:14px">Got a room code from a friend? Enter it below.</p>
+      <label class="field-label" for="joinCodeInput">Room code</label>
+      <input id="joinCodeInput" maxlength="6" placeholder="Room code (e.g. XK7Q2M)" style="text-transform:uppercase">
+      <label class="field-label" for="joinNameInput">Your name</label>
+      <input id="joinNameInput" maxlength="30" placeholder="Your name">
+      <div id="joinRoomMsg" class="msg"></div>
+      <button id="joinRoomBtn" class="btn primary big">Join Room</button>
+    </section>
+  </div>
 </main>
 
 <!-- ============ LOBBY ============ -->
 <main id="view-lobby" class="view hidden">
   <section class="hero">
+    <p class="eyebrow">Draft day</p>
     <h1>IPL Auction Arena</h1>
-    <p>Pick your franchise. Build your squad. Outbid everyone.</p>
+    <p class="hero-lede">Pick your franchise. Build your squad. Outbid everyone.</p>
   </section>
 
   <section class="card room-card">
@@ -115,6 +148,7 @@
 
   <section class="card join-card">
     <h2>1 · Join the auction</h2>
+    <label class="field-label" for="nameInput">Your name (bidder)</label>
     <input id="nameInput" maxlength="30" placeholder="Your name (bidder)">
     <h3>Choose your team <small>— one bidder per team</small></h3>
     <div id="teamGrid" class="team-grid"></div>
@@ -133,6 +167,7 @@
 
 <!-- ============ AUCTION ROOM ============ -->
 <main id="view-auction" class="view hidden">
+  <div class="live-strip"><span class="live-dot"></span> LIVE AUCTION <span class="live-strip-sub">Bids update every second</span></div>
   <section class="arena">
     <div class="player-stage">
       <div class="set-tag" id="setTag"></div>
@@ -182,6 +217,11 @@
 </main>
 
 <div id="resultOverlay" class="overlay hidden"><div id="resultCard" class="result-card"></div></div>
+
+<footer class="site-footer">
+  <p><b>IPL Auction Arena</b> — an unofficial fan game for playing auctions with friends.</p>
+  <p>Not affiliated with, endorsed by, or connected to the IPL, the BCCI, or any franchise. Player photos and stats are shown for gameplay only.</p>
+</footer>
 
 <script src="app.js"></script>
 </body>
