@@ -28,6 +28,39 @@ let voiceOn = true;
 let pickedTeam = null;
 let activeTab = "upcoming";
 let femaleVoice = null;
+const pendingRoom = (new URLSearchParams(location.search).get("room") || "")
+  .toUpperCase().replace(/[^A-Z0-9]/g, "");
+let lastPublicKey = "";
+function presenceDot(online) {
+  return `<span class="presence-dot ${online ? "online" : "offline"}" title="${online ? "Online" : "Offline"}"></span>`;
+}
+async function renderPublicRooms() {
+  const el = $("publicRoomsList");
+  if (!el) return;
+  try {
+    const r = await api("/api/rooms");
+    if (!r || !r.ok) return;
+    const key = r.rooms.map(x => [x.code, x.status, x.bidder_count, x.online_count].join("/")).join(";");
+    if (key === lastPublicKey) return;
+    lastPublicKey = key;
+    el.innerHTML = r.rooms.length ? r.rooms.map(x => `
+      <div class="public-room">
+        <div><b>Room ${esc(x.code)}</b>
+          <span class="room-status">${x.status === "lobby" ? "Waiting in lobby" : "Auction in progress"}</span>
+          ${x.mode ? ` · ${esc(x.mode)}` : ""}
+          <div class="public-room-sub">${x.owner_name ? `Created by ${esc(x.owner_name)} · ` : ""}${x.bidder_count} bidder${x.bidder_count === 1 ? "" : "s"} · ${x.online_count} online</div>
+        </div>
+        <button class="btn small" data-code="${esc(x.code)}">Join</button>
+      </div>`).join("")
+      : `<div style="color:var(--mut);font-size:14px">No open rooms right now — create one above and it will appear here for everyone online.</div>`;
+    el.querySelectorAll("button[data-code]").forEach(b => b.onclick = () => {
+      $("joinCodeInput").value = b.dataset.code;
+      if (!$("joinNameInput").value && store.name) $("joinNameInput").value = store.name;
+      $("joinRoomBtn").scrollIntoView({ behavior: "smooth", block: "center" });
+      $("joinNameInput").focus();
+    });
+  } catch (e) { /* list refreshes next tick */ }
+}
 
 /* ---------------- helpers ---------------- */
 async function api(path, method = "GET", body) {
@@ -127,7 +160,7 @@ function handleEvent(e) {
 /* ---------------- polling ---------------- */
 async function poll() {
   if (!store.auth) { showView("auth"); return; }
-  if (!store.roomCode) { showView("rooms"); renderUserBadge(); return; }
+  if (!store.roomCode) { showView("rooms"); renderUserBadge(); renderPublicRooms(); return; }
   try {
     const st = await api(`${R("/state")}?token=${store.token}&auth=${store.auth}&since=${lastSeq}`);
     if (st && st.ok === false) {
@@ -153,6 +186,19 @@ setInterval(updateTimer, 400);
 /* ---------------- views ---------------- */
 function showView(name) {
   ["auth", "rooms", "lobby", "auction"].forEach(v => $("view-" + v).classList.toggle("hidden", v !== name));
+  // Top-bar cluster (name badge, room badge, mode badge, the ⎋ icon and the
+  // speaker) must never show on the login page.
+  if (name === "auth") {
+    ["userBadge", "roomBadge", "modeBadge", "logoutBtn", "voiceToggle"]
+      .forEach(id => $(id).classList.add("hidden"));
+  } else {
+    // Anywhere else: room/mode badges are re-shown by render() only when
+    // they actually apply; the speaker and the name badge come back here.
+    $("voiceToggle").classList.remove("hidden");
+    $("roomBadge").classList.add("hidden");
+    $("modeBadge").classList.add("hidden");
+    renderUserBadge();
+  }
 }
 function renderUserBadge() {
   const u = (S && S.user ? S.user.name : null) || store.name || null;
@@ -174,6 +220,15 @@ function leaveRoomLocal() {
   S = null; lastSeq = 0; lastSpokenSeq = 0; pickedTeam = null;
   showView("rooms");
 }
+async function goToRooms() {
+  // The ⎋ icon in the top bar: leave the current room (freeing the team
+  // seat) and return to the join-rooms page — staying logged in, NOT to
+  // the login page. A full logout is still available on the rooms page
+  // itself ("🚪 Log out").
+  if (store.token) { try { await api(R("/leave"), "POST", { token: store.token }); } catch (e) {} }
+  leaveRoomLocal();
+  renderPublicRooms();
+}
 function logoutLocal() {
   store.auth = "";
   store.name = "";
@@ -191,14 +246,20 @@ function logoutLocal() {
 function render() {
   if (!store.auth) { showView("auth"); return; }
   renderUserBadge();
-  if (!store.roomCode) { showView("rooms"); return; }
+  if (!store.roomCode) {
+    showView("rooms");
+    if (pendingRoom && $("joinCodeInput") && !$("joinCodeInput").value) $("joinCodeInput").value = pendingRoom;
+    if (pendingRoom && $("joinNameInput") && !$("joinNameInput").value && store.name) $("joinNameInput").value = store.name;
+    renderPublicRooms();
+    return;
+  }
   const rb = $("roomBadge");
   rb.textContent = "Room " + store.roomCode;
-  rb.classList.remove("hidden");
   const a = S.auction;
   const live = a.mode && a.status !== "lobby";
   if (live) { showView("auction"); }
   else { showView("lobby"); }
+  rb.classList.remove("hidden"); // showView hides it by default; a room is active here
   if (!live) { renderLobby(); return; }
   $("modeBadge").textContent = a.mode_cfg.label;
   $("modeBadge").classList.remove("hidden");
@@ -207,13 +268,15 @@ function render() {
 
 function renderLobby() {
   $("roomCodeBig").textContent = store.roomCode;
+  $("roomQr").src = `/api/r/${store.roomCode}/qr.png`;
+  $("roomJoinLink").textContent = window.location.origin + "/?room=" + store.roomCode;
   const members = S.bidders || [];
   $("roomMembers").innerHTML = members.length
     ? `<div class="room-code-label" style="margin-top:10px">In this room (${members.length}):</div>` +
       members.map(m => {
         const t = S.teams[m.team_id];
         const crown = S.room && S.room.owner_name === m.name ? " 👑" : "";
-        return `<span class="member-chip" style="border-color:${t.color}">${esc(m.name)}${crown} · ${t.short}</span>`;
+        return `<span class="member-chip" style="border-color:${t.color}">${presenceDot(m.online)} ${esc(m.name)}${crown} · ${t.short}</span>`;
       }).join(" ")
     : `<div style="color:var(--mut);font-size:13px;margin-top:10px">No bidders yet — pick your team below.</div>`;
   // team grid
@@ -222,7 +285,7 @@ function renderLobby() {
     const d = document.createElement("div");
     d.className = "team-pick" + (t.occupied_by ? " taken" : "") + (pickedTeam === t.id ? " selected" : "");
     d.innerHTML = `<div class="team-dot" style="background:${t.color};color:${t.text_color}">${t.short}</div>
-      <div class="tname">${esc(t.name)}</div>
+      <div class="tname">${esc(t.name)} ${t.occupied_by ? presenceDot(t.online) : ""}</div>
       <div class="tby">${t.occupied_by ? "Taken by " + esc(t.occupied_by) : "Available"}</div>`;
     if (!t.occupied_by) d.onclick = () => { pickedTeam = t.id; renderLobby(); };
     g.appendChild(d);
@@ -339,7 +402,7 @@ function teamColor(id) { return S.teams[id].color; }
 function teamText(id) { return S.teams[id].text_color; }
 
 function renderSide() {
-  const sideKey = S.teams.map(t => [t.occupied_by, t.squad && t.squad.count, t.squad && t.squad.overseas, t.squad && t.squad.remaining_lakh, t.squad && t.squad.players.map(pp => pp.id + ":" + pp.sold_price_lakh).join(",")].join("/")).join(";");
+  const sideKey = S.teams.map(t => [t.occupied_by, t.online, t.squad && t.squad.count, t.squad && t.squad.overseas, t.squad && t.squad.remaining_lakh, t.squad && t.squad.players.map(pp => pp.id + ":" + pp.sold_price_lakh).join(",")].join("/")).join(";");
   if (sideKey === lastSideKey) return;
   lastSideKey = sideKey;
   const me = S.me;
@@ -349,8 +412,8 @@ function renderSide() {
     const sq = t.squad, cfg = S.auction.mode_cfg;
     const d = document.createElement("div");
     d.className = "tm" + (me && me.team_id === t.id ? " me" : "");
-    d.innerHTML = `<div class="hd"><span class="dot" style="background:${t.color}"></span>${t.short}</div>
-      <div class="st">${t.occupied_by ? esc(t.occupied_by) : "<i>no bidder</i>"}</div>
+    d.innerHTML = `<div class="hd"><span class="dot" style="background:${t.color}"></span>${t.short} ${t.occupied_by ? presenceDot(t.online) : ""}</div>
+      <div class="st">${t.occupied_by ? esc(t.occupied_by) + (t.online ? " · online" : " · offline") : "<i>no bidder</i>"}</div>
       <div class="st"><b>${sq.count}</b>/${cfg.squad_size} players · <b>${sq.overseas}</b> ✈️</div>
       <div class="st">Purse: <b>${fmtLakh(sq.remaining_lakh)}</b></div>`;
     ts.appendChild(d);
@@ -543,7 +606,7 @@ async function doLogout() {
   try { await api("/api/auth/logout", "POST", { token: store.auth }); } catch (e) {}
   logoutLocal();
 }
-$("logoutBtn").onclick = doLogout;
+$("logoutBtn").onclick = goToRooms;
 $("roomsLogoutBtn").onclick = doLogout;
 $("createRoomBtn").onclick = async () => {
   const name = $("createNameInput").value.trim();
@@ -578,6 +641,16 @@ $("copyCodeBtn").onclick = async () => {
     setTimeout(() => $("copyCodeBtn").textContent = "📋 Copy", 2000);
   } catch (e) {
     prompt("Copy your room code:", store.roomCode);
+  }
+};
+$("copyLinkBtn").onclick = async () => {
+  const link = window.location.origin + "/?room=" + store.roomCode;
+  try {
+    await navigator.clipboard.writeText(link);
+    $("copyLinkBtn").textContent = "✅ Copied";
+    setTimeout(() => $("copyLinkBtn").textContent = "🔗 Copy join link", 2000);
+  } catch (e) {
+    prompt("Copy your join link:", link);
   }
 };
 $("leaveRoomLink").onclick = async (e) => {

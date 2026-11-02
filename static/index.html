@@ -19,7 +19,7 @@
     <div id="userBadge" class="mode-badge hidden"></div>
     <div id="roomBadge" class="mode-badge hidden"></div>
     <div id="modeBadge" class="mode-badge hidden"></div>
-    <button id="logoutBtn" class="icon-btn hidden" title="Log out">⎋</button>
+    <button id="logoutBtn" class="icon-btn hidden" title="Back to rooms">⎋</button>
     <button id="voiceToggle" class="icon-btn on" title="Toggle auctioneer voice">🔊</button>
   </div>
 </header>
@@ -124,6 +124,12 @@
       <button id="joinRoomBtn" class="btn primary big">Join Room</button>
     </section>
   </div>
+
+  <section class="card">
+    <h2>🌍 Open rooms — live right now</h2>
+    <p style="color:var(--mut);font-size:14px">Every room anyone has created is listed here for everyone online. Tap one to join it — no code needed.</p>
+    <div id="publicRoomsList" class="public-rooms"></div>
+  </section>
 </main>
 
 <!-- ============ LOBBY ============ -->
@@ -141,6 +147,14 @@
         <div id="roomCodeBig" class="room-code"></div>
       </div>
       <button id="copyCodeBtn" class="btn small">📋 Copy</button>
+    </div>
+    <div class="qr-row">
+      <img id="roomQr" class="qr-img" alt="QR code to join this room">
+      <div class="qr-info">
+        <div class="room-code-label">Scan to join — point a phone camera at the code</div>
+        <div id="roomJoinLink" class="join-link"></div>
+        <button id="copyLinkBtn" class="btn small" style="margin-top:8px">🔗 Copy join link</button>
+      </div>
     </div>
     <div id="roomMembers" class="room-members"></div>
     <div style="margin-top:10px"><a href="#" id="leaveRoomLink" style="color:var(--mut);font-size:13px">← leave room</a></div>

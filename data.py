@@ -27,6 +27,23 @@ MODES = {
                  "Uncapped Fast Bowlers", "Uncapped Spinners"],
         "blurb": "Only players in an IPL 2025 or 2026 squad: 310 players, retained stars and uncapped youngsters included, everyone else removed. Original mega-auction order: Marquee A, B, C first, then capped sets by role, then uncapped sets by role. 25-player squads: max 8 overseas, max 17 Indian, \u20b9120 Cr purse.",
     },
+    "mini": {
+        "label": "Mini Auction",
+        "purse_cr": 60, "squad_size": 8,
+        "max_overseas": 4, "min_overseas": 2,
+        "sets": ["Marquee A", "Marquee B", "Marquee C",
+                 "Capped Batters", "Capped All-Rounders", "Capped Wicket-Keepers",
+                 "Capped Fast Bowlers", "Capped Spinners"],
+        "blurb": "Fill the gaps. Marquee + capped sets only (no uncapped players). 8-player squads, min 2 / max 4 overseas, \u20b960 Cr purse.",
+    },
+    "quick": {
+        "label": "Quick Auction",
+        "purse_cr": 30, "squad_size": 6,
+        "max_overseas": 3, "min_overseas": 0,
+        "sets": ["Marquee A", "Marquee B", "Marquee C",
+                 "Capped Batters", "Capped All-Rounders", "Capped Wicket-Keepers"],
+        "blurb": "Rapid fire. Marquee + capped batters, all-rounders and wicket-keepers only. 6-player squads, max 3 overseas, \u20b930 Cr purse.",
+    },
 }
 
 # (name, country, role, base_price_lakh, set)

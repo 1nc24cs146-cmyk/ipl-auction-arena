@@ -15,7 +15,13 @@ import threading
 import time
 from pathlib import Path
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, Response
+
+try:
+    import qrcode  # for the room-join QR code (qrcode[pil] in requirements.txt)
+except ImportError:  # pragma: no cover - only if the dependency is missing
+    qrcode = None
+from io import BytesIO
 
 import hashlib
 import hmac
@@ -132,6 +138,12 @@ def init_db():
         c.execute("ALTER TABLE bidders ADD COLUMN user_id INTEGER")
     c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_bidders_room_user"
               " ON bidders(room_code, user_id)")
+    # bidders.last_seen: refreshed on every state poll, so the site can show
+    # who is online (green) vs offline (red) during an auction.
+    bcols = [r["name"] for r in c.execute("PRAGMA table_info(bidders)").fetchall()]
+    if "last_seen" not in bcols:
+        c.execute("ALTER TABLE bidders ADD COLUMN last_seen REAL")
+        c.execute("UPDATE bidders SET last_seen=joined_at WHERE last_seen IS NULL")
     # players.era added with era modes; migrate old DBs
     pcols = [r["name"] for r in c.execute("PRAGMA table_info(players)").fetchall()]
     if "era" not in pcols:
@@ -150,6 +162,9 @@ def auth_user(con, token):
 
 
 MIN_BIDDERS = 5  # a match cannot start with fewer bidders in the room
+ONLINE_WINDOW = 15  # seconds since a bidder's last poll to still count as online
+# (the app polls every 1s while open, so 15s covers a slow poll/tab switch
+# without marking someone offline for a momentary hiccup)
 
 
 def room_owner_id(con, code):
@@ -476,6 +491,69 @@ def api_create_room():
             con.close()
 
 
+@app.get("/api/rooms")
+def api_list_rooms():
+    """Public rooms list: every room that is still open (lobby or in play),
+    so anyone online on the site can see it and join. Finished rooms are
+    left out. Room codes are share codes by design — listing them is the
+    point, so a room here is joinable by anyone who sees it."""
+    with lock:
+        con = db()
+        try:
+            now = time.time()
+            out = []
+            rows = con.execute(
+                "SELECT r.code, r.created_at, a.mode, a.status FROM rooms r"
+                " JOIN auction a ON a.room_code=r.code"
+                " WHERE a.status IN ('lobby', 'bidding', 'result')"
+                " ORDER BY r.created_at DESC LIMIT 50").fetchall()
+            for row in rows:
+                bidders = con.execute(
+                    "SELECT name, last_seen FROM bidders WHERE room_code=?",
+                    (row["code"],)).fetchall()
+                owner_row = con.execute(
+                    "SELECT name FROM bidders WHERE room_code=? AND user_id="
+                    "(SELECT owner_user_id FROM rooms WHERE code=?)",
+                    (row["code"], row["code"])).fetchone()
+                out.append({
+                    "code": row["code"],
+                    "status": row["status"],
+                    "mode": MODES[row["mode"]]["label"] if row["mode"] in MODES else None,
+                    "bidder_count": len(bidders),
+                    "online_count": sum(1 for b in bidders
+                                        if b["last_seen"]
+                                        and now - b["last_seen"] <= ONLINE_WINDOW),
+                    "owner_name": owner_row["name"] if owner_row else None,
+                    "created_at": row["created_at"],
+                })
+            return jsonify({"ok": True, "rooms": out})
+        finally:
+            con.close()
+
+
+@app.get("/api/r/<code>/qr.png")
+def api_room_qr(code):
+    """QR code image for joining a room: scanning it opens the site with
+    ?room=CODE, which prefills the room code on the rooms page."""
+    if qrcode is None:
+        return jsonify({"ok": False, "error": "QR generation is not installed."}), 503
+    with lock:
+        con = db()
+        try:
+            room, err = room_or_404(con, code)
+            if err:
+                return err
+            code = room["code"]
+        finally:
+            con.close()
+    join_url = request.host_url.rstrip("/") + "/?room=" + code
+    img = qrcode.make(join_url)
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    return Response(buf.getvalue(), mimetype="image/png",
+                    headers={"Cache-Control": "public, max-age=3600"})
+
+
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 OTP_TTL = 600        # codes expire after 10 minutes
 OTP_COOLDOWN = 60    # seconds between code requests for the same email
@@ -712,6 +790,11 @@ def api_state(code):
                 r = con.execute("SELECT * FROM bidders WHERE token=? AND room_code=?",
                                 (token, code)).fetchone()
                 if r:
+                    # Presence: every state poll (1s while the page is open)
+                    # refreshes this bidder, so others see them as online.
+                    con.execute("UPDATE bidders SET last_seen=? WHERE id=?",
+                                (now, r["id"]))
+                    con.commit()
                     me = {"id": r["id"], "name": r["name"], "team_id": r["team_id"],
                           "is_host": (a["host_token"] == token)}
             squads = all_squads(con, code, a["mode"]) if a["mode"] else None
@@ -723,6 +806,8 @@ def api_state(code):
                 teams.append({
                     "id": tid, "short": short, "name": name, "color": color,
                     "text_color": tcolor, "occupied_by": b["name"] if b else None,
+                    "online": bool(b and b["last_seen"]
+                                   and now - b["last_seen"] <= ONLINE_WINDOW),
                     "squad": sq,
                 })
             sets = []
@@ -784,8 +869,10 @@ def api_state(code):
                        "data": json.loads(e["data"])} for e in evs]
             max_seq = con.execute("SELECT MAX(seq) AS m FROM events WHERE room_code=?",
                                   (code,)).fetchone()["m"] or 0
-            bidders = [{"name": b["name"], "team_id": b["team_id"]}
-                       for b in con.execute("SELECT name, team_id FROM bidders"
+            bidders = [{"name": b["name"], "team_id": b["team_id"],
+                        "online": bool(b["last_seen"]
+                                       and now - b["last_seen"] <= ONLINE_WINDOW)}
+                       for b in con.execute("SELECT name, team_id, last_seen FROM bidders"
                                             " WHERE room_code=? ORDER BY joined_at", (code,))]
             owner_id = room_owner_id(con, code)
             owner_row = con.execute("SELECT name, team_id FROM bidders"
@@ -849,9 +936,9 @@ def api_join(code):
                 return jsonify({"ok": False,
                                 "error": "You've already joined this room."}), 409
             token = secrets.token_hex(8)
-            con.execute("INSERT INTO bidders(room_code,name,team_id,token,user_id,joined_at)"
-                        " VALUES (?,?,?,?,?,?)",
-                        (code, name, team_id, token, u["id"], time.time()))
+            con.execute("INSERT INTO bidders(room_code,name,team_id,token,user_id,joined_at,last_seen)"
+                        " VALUES (?,?,?,?,?,?,?)",
+                        (code, name, team_id, token, u["id"], time.time(), time.time()))
             emit(con, code, "team_joined", {"name": name, "team_id": team_id,
                                             "team_name": TEAMS[team_id][1]})
             con.commit()
