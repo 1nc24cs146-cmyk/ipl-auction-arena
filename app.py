@@ -34,7 +34,7 @@ STATIC_DIR = BASE / "static"
 
 BID_WINDOW = 20      # seconds of bidding per player
 BID_EXTEND = 5       # seconds added to the clock on every new bid
-RESULT_SECS = 7      # celebration screen before auto-advancing
+RESULT_SECS = 1      # celebration screen before auto-advancing (sold/unsold banner, 1s only)
 MIN_BASE_LAKH = 30   # cheapest possible base price (solvency rule)
 
 CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # no confusing 0/O/1/I
