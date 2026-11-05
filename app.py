@@ -161,7 +161,7 @@ def auth_user(con, token):
         (token,)).fetchone()
 
 
-MIN_BIDDERS = 5  # a match cannot start with fewer bidders in the room
+MIN_BIDDERS = 1  # no minimum to start: the room owner can start alone
 ONLINE_WINDOW = 15  # seconds since a bidder's last poll to still count as online
 # (the app polls every 1s while open, so 15s covers a slow poll/tab switch
 # without marking someone offline for a momentary hiccup)
@@ -1011,13 +1011,8 @@ def api_start(code):
             if b["user_id"] != room_owner_id(con, code):
                 return jsonify({"ok": False,
                                 "error": "Only the room owner can start the match."}), 403
-            # need a minimum number of bidders in the lobby
-            n = con.execute("SELECT COUNT(*) AS c FROM bidders WHERE room_code=?",
-                            (code,)).fetchone()["c"]
-            if n < MIN_BIDDERS:
-                return jsonify({"ok": False,
-                                "error": f"Need at least {MIN_BIDDERS} bidders to start"
-                                         f" — {n} joined so far."}), 400
+            # no minimum-bidder lock: the owner may start with just
+            # themselves in the room (MIN_BIDDERS = 1)
             now = time.time()
             con.execute("UPDATE auction SET mode=?, status='lobby', host_token=?"
                         " WHERE room_code=?", (mode, b["token"], code))
